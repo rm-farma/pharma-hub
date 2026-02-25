@@ -1,0 +1,25 @@
+key: stock-search
+version: "1.0.0"
+description: "Busca de produtos no estoque por EAN ou nome (ILIKE)"
+endpoint: "/queries/stock-search/execute"
+tags:
+  - estoque
+  - busca
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: searchTerm
+    type: STRING
+    required: true
+    description: "Termo de busca (enviar com % para ILIKE, ex: %dipirona%)"
+pagination:
+  defaultPageSize: 20
+  maxPageSize: 100
+  allowUnpaged: false
+  maxUnpagedRows: 1000
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.StockSearchDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.StockSearchMapper"
+

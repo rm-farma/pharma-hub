@@ -1,0 +1,30 @@
+key: abc-curve-summary
+version: "1.0.0"
+description: "Resumo da curva ABC (total de produtos e faturamento por classe A/B/C)"
+endpoint: "/queries/abc-curve-summary/execute"
+tags:
+  - curva-abc
+  - resumo
+  - estoque
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+pagination:
+  defaultPageSize: 1
+  maxPageSize: 1
+  allowUnpaged: true
+  maxUnpagedRows: 1
+timeoutMs: 60000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.AbcCurveSummaryDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.AbcCurveSummaryMapper"
+

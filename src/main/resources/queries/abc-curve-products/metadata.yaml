@@ -1,0 +1,34 @@
+key: abc-curve-products
+version: "1.0.0"
+description: "Detalhamento de produtos na curva ABC com classe, faturamento, estoque e preços"
+endpoint: "/queries/abc-curve-products/execute"
+tags:
+  - curva-abc
+  - produtos
+  - detalhamento
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+  - name: classeAbc
+    type: STRING
+    required: false
+    description: "Filtro por classe ABC (A, B ou C)"
+pagination:
+  defaultPageSize: 50
+  maxPageSize: 200
+  allowUnpaged: true
+  maxUnpagedRows: 10000
+timeoutMs: 60000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.AbcCurveProductDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.AbcCurveProductMapper"
+

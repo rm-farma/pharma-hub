@@ -1,0 +1,21 @@
+key: stock-metrics
+version: "1.0.0"
+description: "Métricas gerais do estoque (custo total e itens de alta rotatividade)"
+endpoint: "/queries/stock-metrics/execute"
+tags:
+  - estoque
+  - metricas
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+pagination:
+  defaultPageSize: 1
+  maxPageSize: 1
+  allowUnpaged: true
+  maxUnpagedRows: 1
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.StockMetricsDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.StockMetricsMapper"
+

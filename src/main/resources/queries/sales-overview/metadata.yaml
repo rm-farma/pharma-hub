@@ -1,0 +1,29 @@
+key: sales-overview
+version: "1.0.0"
+description: "Visão geral de vendas (total faturado, CMV e total de pedidos)"
+endpoint: "/queries/sales-overview/execute"
+tags:
+  - vendas
+  - visao-geral
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+pagination:
+  defaultPageSize: 1
+  maxPageSize: 1
+  allowUnpaged: true
+  maxUnpagedRows: 1
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.SalesOverviewDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.SalesOverviewMapper"
+

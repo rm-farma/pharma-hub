@@ -1,0 +1,35 @@
+key: top-products
+version: "1.0.0"
+description: "Top produtos por quantidade vendida no período"
+endpoint: "/queries/top-products/execute"
+tags:
+  - vendas
+  - produtos
+  - ranking
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+  - name: limit
+    type: INTEGER
+    required: false
+    description: "Quantidade máxima de produtos retornados"
+    defaultValue: "10"
+pagination:
+  defaultPageSize: 10
+  maxPageSize: 100
+  allowUnpaged: true
+  maxUnpagedRows: 1000
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.TopProductDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.TopProductMapper"
+

@@ -1,0 +1,27 @@
+key: idle-stock
+version: "1.0.0"
+description: "Estoque parado (produtos em estoque sem vendas) com resumo agregado"
+endpoint: "/queries/idle-stock/execute"
+tags:
+  - estoque
+  - parado
+  - sem-venda
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: limit
+    type: INTEGER
+    required: false
+    description: "Quantidade máxima de produtos retornados"
+    defaultValue: "20"
+pagination:
+  defaultPageSize: 20
+  maxPageSize: 100
+  allowUnpaged: true
+  maxUnpagedRows: 5000
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.IdleStockDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.IdleStockMapper"
+

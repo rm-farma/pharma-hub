@@ -1,0 +1,29 @@
+key: sales-summary
+version: "1.0.0"
+description: "Resumo de vendas por período (total faturado e total de pedidos)"
+endpoint: "/queries/sales-summary/execute"
+tags:
+  - vendas
+  - resumo
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+pagination:
+  defaultPageSize: 1
+  maxPageSize: 1
+  allowUnpaged: true
+  maxUnpagedRows: 1
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.SalesSummaryDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.SalesSummaryMapper"
+

@@ -1,0 +1,35 @@
+key: top-sellers
+version: "1.0.0"
+description: "Top vendedores por faturamento no período"
+endpoint: "/queries/top-sellers/execute"
+tags:
+  - vendas
+  - vendedores
+  - ranking
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+  - name: limit
+    type: INTEGER
+    required: false
+    description: "Quantidade máxima de vendedores retornados"
+    defaultValue: "5"
+pagination:
+  defaultPageSize: 10
+  maxPageSize: 50
+  allowUnpaged: true
+  maxUnpagedRows: 500
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.TopSellerDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.TopSellerMapper"
+

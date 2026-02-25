@@ -1,0 +1,26 @@
+key: stock-without-sales
+version: "1.0.0"
+description: "Produtos em estoque que nunca tiveram venda registrada"
+endpoint: "/queries/stock-without-sales/execute"
+tags:
+  - estoque
+  - sem-venda
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: limit
+    type: INTEGER
+    required: false
+    description: "Quantidade máxima de produtos retornados"
+    defaultValue: "20"
+pagination:
+  defaultPageSize: 20
+  maxPageSize: 100
+  allowUnpaged: true
+  maxUnpagedRows: 5000
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.StockWithoutSalesDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.StockWithoutSalesMapper"
+

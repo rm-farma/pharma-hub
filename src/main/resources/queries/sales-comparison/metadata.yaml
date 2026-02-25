@@ -1,0 +1,38 @@
+key: sales-comparison
+version: "1.0.0"
+description: "Comparativo de vendas entre dois períodos (faturamento, itens vendidos, ticket médio com variação %)"
+endpoint: "/queries/sales-comparison/execute"
+tags:
+  - vendas
+  - comparativo
+  - periodos
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate1
+    type: STRING
+    required: true
+    description: "Data início do período base"
+  - name: endDate1
+    type: STRING
+    required: true
+    description: "Data fim do período base"
+  - name: startDate2
+    type: STRING
+    required: true
+    description: "Data início do período comparado"
+  - name: endDate2
+    type: STRING
+    required: true
+    description: "Data fim do período comparado"
+pagination:
+  defaultPageSize: 1
+  maxPageSize: 1
+  allowUnpaged: true
+  maxUnpagedRows: 1
+timeoutMs: 60000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.SalesComparisonDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.SalesComparisonMapper"
+
