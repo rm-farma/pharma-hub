@@ -1,0 +1,84 @@
+package com.rmfarma.pharmahub.api;
+
+import org.eclipse.microprofile.openapi.annotations.OpenAPIDefinition;
+import org.eclipse.microprofile.openapi.annotations.enums.SecuritySchemeIn;
+import org.eclipse.microprofile.openapi.annotations.enums.SecuritySchemeType;
+import org.eclipse.microprofile.openapi.annotations.info.Contact;
+import org.eclipse.microprofile.openapi.annotations.info.Info;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityScheme;
+import org.eclipse.microprofile.openapi.annotations.servers.Server;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import jakarta.ws.rs.core.Application;
+
+@OpenAPIDefinition(
+    info = @Info(
+        title = "Pharma Hub API",
+        version = "1.0.0",
+        description = """
+                ## Sobre o Pharma Hub
+
+                O **Pharma Hub** é o repositório centralizado de consultas SQL analíticas da RM Farma.
+                Ele expõe queries pré-aprovadas via REST, com suporte a paginação, parâmetros tipados e controle de acesso por API Key.
+
+                ## Como usar
+
+                1. Consulte o catálogo de queries disponíveis: `GET /queries`
+                2. Veja os parâmetros de uma query específica: `GET /queries/{key}`
+                3. Execute a query com seus parâmetros: `POST /queries/{key}/execute`
+
+                ## Autenticação
+
+                Todas as requisições (exceto `GET /health`) exigem o header:
+                ```
+                X-API-Key: sua-chave-aqui
+                ```
+                Em ambiente de desenvolvimento, use: `dev-api-key-123`
+
+                ## Modos de execução
+
+                | Modo | Quando usar | Campo na requisição |
+                |------|-------------|---------------------|
+                | **PAGED** | Resultados grandes, com navegação por páginas | `page` + `pageSize` |
+                | **UNPAGED** | Queries de resumo (1 linha) ou exportações | `unpaged: true` |
+
+                ## Queries disponíveis
+
+                | Key | Descrição |
+                |-----|-----------|
+                | `sales-summary` | Total faturado e pedidos por período |
+                | `sales-overview` | Faturamento, CMV e pedidos |
+                | `sales-comparison` | Comparativo de dois períodos com variação % |
+                | `top-sellers` | Ranking de vendedores por faturamento |
+                | `top-products` | Ranking de produtos por quantidade vendida |
+                | `stock-search` | Busca de produto por EAN ou nome |
+                | `stock-metrics` | Métricas gerais do estoque |
+                | `stock-without-sales` | Produtos em estoque sem registro de venda |
+                | `idle-stock` | Estoque parado com custo e valor total |
+                | `abc-curve-summary` | Resumo da curva ABC por classe A/B/C |
+                | `abc-curve-products` | Detalhamento de produtos na curva ABC |
+                """,
+        contact = @Contact(
+            name = "RM Farma — Plataforma",
+            email = "plataforma@rmfarma.com.br"
+        )
+    ),
+    servers = {
+        @Server(url = "http://localhost:8080", description = "Desenvolvimento local")
+    },
+    tags = {
+        @Tag(name = "Health",               description = "Verificação de saúde da aplicação."),
+        @Tag(name = "Catálogo de Queries",  description = "Listagem e detalhes das queries disponíveis."),
+        @Tag(name = "Execução de Queries",  description = "Execução das queries com parâmetros e paginação.")
+    }
+)
+@SecurityScheme(
+    securitySchemeName = "ApiKeyAuth",
+    type = SecuritySchemeType.APIKEY,
+    apiKeyName = "X-API-Key",
+    in = SecuritySchemeIn.HEADER,
+    description = "Chave de API enviada no header `X-API-Key`. Em desenvolvimento, use `dev-api-key-123`."
+)
+public class OpenApiConfig extends Application {
+}
+

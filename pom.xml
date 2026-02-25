@@ -58,16 +58,10 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>
         </dependency>
-        <!-- OpenAPI spec — gera /q/openapi (JSON/YAML) -->
+        <!-- OpenAPI spec — gera /q/openapi (JSON/YAML) e Swagger UI em /q/swagger-ui -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
-        </dependency>
-        <!-- Scalar UI — documentacao moderna, substituto do Swagger UI (apenas dev) -->
-        <dependency>
-            <groupId>io.quarkiverse.scalar</groupId>
-            <artifactId>quarkus-scalar</artifactId>
-            <version>1.0.1</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
