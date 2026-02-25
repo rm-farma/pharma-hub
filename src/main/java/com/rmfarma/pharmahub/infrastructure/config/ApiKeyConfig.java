@@ -1,12 +1,18 @@
 package com.rmfarma.pharmahub.infrastructure.config;
 
-import io.smallrye.config.ConfigMapping;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.Map;
 
-@ConfigMapping(prefix = "queryhub.security")
-public interface ApiKeyConfig {
+@ApplicationScoped
+public class ApiKeyConfig {
 
-    Map<String, String> apiKeys();
+    @ConfigProperty(name = "queryhub.security.api-keys")
+    Map<String, String> apiKeys;
+
+    public Map<String, String> apiKeys() {
+        return apiKeys;
+    }
 }
 
