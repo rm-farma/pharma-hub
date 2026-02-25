@@ -45,22 +45,20 @@ public class JdbcQueryExecutor implements QueryExecutor {
     @SuppressWarnings("unchecked")
     public <T> PagedResult<T> executePaged(QueryDefinition definition, Map<String, Object> params, int page, int pageSize) {
         String sql = definition.sqlTemplate();
-        int fetchSize = pageSize + 1;
         int offset = page * pageSize;
 
-        sql = appendLimitOffset(sql, fetchSize, offset);
+        // 1. COUNT query via subquery wrapping
+        long totalItems = executeCount(sql, params, definition);
+        int totalPages = (int) Math.ceil((double) totalItems / pageSize);
 
-        NamedParamResolver.ResolvedQuery resolved = paramResolver.resolve(sql, params, definition);
+        // 2. Data query com LIMIT/OFFSET
+        String dataSql = appendLimitOffset(sql, pageSize, offset);
+        NamedParamResolver.ResolvedQuery resolved = paramResolver.resolve(dataSql, params, definition);
         ResultSetMapper<T> mapper = (ResultSetMapper<T>) resolveMapper(definition.key());
 
         List<T> items = executeQuery(resolved, mapper, definition.timeoutMs());
 
-        boolean hasNext = items.size() > pageSize;
-        if (hasNext) {
-            items = new ArrayList<>(items.subList(0, pageSize));
-        }
-
-        return new PagedResult<>(items, page, pageSize, hasNext);
+        return new PagedResult<>(items, page, pageSize, totalItems, totalPages);
     }
 
     @Override
@@ -82,6 +80,31 @@ public class JdbcQueryExecutor implements QueryExecutor {
         }
 
         return new UnpagedResult<>(items, items.size(), truncated);
+    }
+
+    private long executeCount(String originalSql, Map<String, Object> params, QueryDefinition definition) {
+        String countSql = "SELECT COUNT(*) AS total FROM (" + originalSql.stripTrailing() + ") AS count_query";
+        NamedParamResolver.ResolvedQuery resolved = paramResolver.resolve(countSql, params, definition);
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(resolved.sql())) {
+
+            int timeoutSec = Math.max(1, (int) (definition.timeoutMs() / 1000));
+            ps.setQueryTimeout(timeoutSec);
+
+            paramResolver.bind(ps, resolved.bindings());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("total");
+                }
+            }
+        } catch (SQLException e) {
+            LOG.error("Erro ao executar COUNT query", e);
+            throw new RuntimeException("Erro ao executar COUNT query: " + e.getMessage(), e);
+        }
+
+        return 0;
     }
 
     private <T> List<T> executeQuery(NamedParamResolver.ResolvedQuery resolved, ResultSetMapper<T> mapper, long timeoutMs) {

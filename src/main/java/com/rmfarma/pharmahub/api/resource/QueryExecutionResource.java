@@ -54,7 +54,7 @@ public class QueryExecutionResource {
             rowsReturned = paged.items().size();
             responseBody = new PagedResponse<>(
                     key, "PAGED", paged.page(), paged.pageSize(),
-                    paged.hasNext(), paged.items(), durationMs, requestId
+                    paged.totalItems(), paged.totalPages(), paged.items(), durationMs, requestId
             );
         } else {
             UnpagedResult<?> unpaged = (UnpagedResult<?>) result.result();

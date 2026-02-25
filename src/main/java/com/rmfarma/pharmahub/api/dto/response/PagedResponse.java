@@ -7,7 +7,8 @@ public record PagedResponse<T>(
         String mode,
         int page,
         int pageSize,
-        boolean hasNext,
+        long totalItems,
+        int totalPages,
         List<T> items,
         long durationMs,
         String requestId
