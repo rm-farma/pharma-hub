@@ -3,12 +3,14 @@
 # Secrets usados (Secret Manager - projeto rm-farma-dev):
 #   pharmahub_db_url, pharmahub_db_user, pharmahub_db_password,
 #   pharmahub_api_key_pharma_app, pharmahub_api_key_admin_dashboard
+
 steps:
   # 1. Build Maven (uber-jar para Cloud Run)
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'maven-build'
     entrypoint: 'mvn'
     args: [ 'package', '-DskipTests', '-Dquarkus.package.jar.type=uber-jar' ]
+
   # 2. Build da imagem Docker
   - name: 'gcr.io/cloud-builders/docker'
     id: 'docker-build'
@@ -22,52 +24,59 @@ steps:
       - '-f'
       - 'Dockerfile'
       - '.'
+
   # 3. Push das imagens
-  - name: 'gcr.io/cloud-builders/doc# Cloud Build - pharma-hub - NONPROD (branch: dev)
-#
-# Secrets usados (Secret sh#
-# Secrets usados (Secret Manager - projeto rm-f_ID/#   pharmahub_db_url, pharmahub_db_user, pharmahub_db_pa: #   pharmahub_api_key_pharma_app, pharmahub_api_key_admin_dash  steps:
-  # 1. Build Maven (uber-jar para Cloud Run)
-  - name: 'mavIO  # ock  - name: 'maven:3.9-eclipse-temurin-21'
-  ${    id: 'maven-build'
-    entrypoint: 'lo    entrypoint: 'mvnPR    args: [ 'package/g  # 2. Build da imagem Docker
   - name: 'gcr.io/cloud-builders/docker'
-    ioc  - name: 'gcr.io/cloud-builnt    id: 'docker-build'
-    waitFor: [ '      waitFor: [ 'maven{_    args:
-      - 'build'
-   {_      - RY      - '-t'
- r.      - '${OJ      - '-t'
-      - '${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME=m      -            - '-f'
-      - 'Dockerfile'
-      - '.'
-  # 3. Push das imagens
-  - name: 'gcr.io/cloud-bui        - 'Dost      - '.'
-  # 3. CE  # 3. Pus-   - name: 'gcr.io/clouUR#
-# Secrets usados (Secret sh#
-# Secrets usados (Secret Manager - projeto rm-f_Iw-unauthe# Secrets usados (Secret Mav-  # 1. Build Maven (uber-jar para Cloud Run)
-  - name: 'mavIO  # ock  - name: 'maven:3.9-eclipse-temurin-21'
-  ${    id: 'maven-build'
-    entrypoint: 'lo    entrypoint: 'mvnPR  se  - name: 'mavIO  # ock  - name: 'maven:3.9sw  ${    id: 'maven-build'
-    entrypoint: 'lo    entrypoint: 'es    entrypoint: 'lo    eD=  - name: 'gcr.io/cloud-builders/docker'
-    ioc  - name: 'gcr.io/cloud-builnt    id: 'dock/$    ioc  - name: 'gcr.io/cloud-builnt  AM    waitFor: [ '      waitFor: [ 'maven{_    args:
-      -$P      - 'build'
-   {_      - RY      - '-t'
- r.  '
-   {_      - R
-  r.      - '${OJ      - '  _      - '${_REPOSITORY_REGI
-       - 'Dockerfile'
-      - '.'
-  # 3. Push das imagens
-  - name: 'gcr.io/cloud-bui        - 'Dost      - '.'
-  # TA      - '.'
-  # 3. ST  # 3. Pus
-   - name: 'gcr.io/clou_T  # 3. CE  # 3. Pus-   - name: 'gcr.io/clouUR#
-# Secng# Secrets usados (Secret sh#
-# Secrets usacat > /Users/devlima/git/hipersaude/pharma-hub/Dockerfile << 'EOF'
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-# Copia o uber-jar gerado pelo Maven com -Dquarkus.package.jar.type=uber-jar
-COPY target/*-runner.jar /app/application.jar
-EXPOSE 8080
-ENV JAVA_OPTS="-Xms128m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/application.jar"]
+    id: 'docker-push-sha'
+    waitFor: [ 'docker-build' ]
+    args: [ 'push', '${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME}:$COMMIT_SHA' ]
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'docker-push-latest'
+    waitFor: [ 'docker-build' ]
+    args: [ 'push', '${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME}:latest' ]
+
+  # 4. Deploy no Cloud Run Service - NONPROD
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-service'
+    waitFor: [ 'docker-push-sha' ]
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_APP_NAME}'
+      - '--image=${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME}:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--memory=${_MEMORY}'
+      - '--cpu=${_CPU}'
+      - '--min-instances=${_MIN_INSTANCES}'
+      - '--max-instances=${_MAX_INSTANCES}'
+      - '--concurrency=${_CONCURRENCY}'
+      - '--timeout=${_TIMEOUT}'
+      - '--port=8080'
+      - '--no-allow-unauthenticated'
+      - '--set-env-vars=QUARKUS_PROFILE=prod,LOG_LEVEL=${_LOG_LEVEL},LOG_JSON=true,GCP_LOGGING_ENABLED=true'
+      - '--set-secrets=DATABASE_URL=pharmahub_db_url:latest,DATABASE_USER=pharmahub_db_user:latest,DATABASE_PASSWORD=pharmahub_db_password:latest,API_KEY_PHARMA_APP=pharmahub_api_key_pharma_app:latest,API_KEY_ADMIN_DASHBOARD=pharmahub_api_key_admin_dashboard:latest'
+
+images:
+  - '${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME}:$COMMIT_SHA'
+  - '${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME}:latest'
+
+substitutions:
+  _APP_NAME: 'pharma-hub'
+  _REPOSITORY_NAME: 'rm-farma'
+  _REPOSITORY_REGION: 'southamerica-east1'
+  _REGION: 'southamerica-east1'
+  _MEMORY: '512Mi'
+  _CPU: '1'
+  _MIN_INSTANCES: '0'
+  _MAX_INSTANCES: '3'
+  _CONCURRENCY: '80'
+  _TIMEOUT: '60s'
+  _LOG_LEVEL: 'DEBUG'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'
