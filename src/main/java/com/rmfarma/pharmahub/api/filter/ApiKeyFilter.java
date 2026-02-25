@@ -57,8 +57,7 @@ public class ApiKeyFilter implements ContainerRequestFilter {
     }
 
     private String resolveClientId(String apiKey) {
-        Map<String, String> keys = apiKeyConfig.apiKeys();
-        for (Map.Entry<String, String> entry : keys.entrySet()) {
+        for (Map.Entry<String, String> entry : apiKeyConfig.apiKeys().entrySet()) {
             if (entry.getValue().equals(apiKey)) {
                 return entry.getKey();
             }
