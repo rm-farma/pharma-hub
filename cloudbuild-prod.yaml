@@ -1,6 +1,6 @@
 # Cloud Build — pharma-hub — PROD (branch: main/prod)
 #
-# Secrets usados (Secret Manager - projeto rm-farma):
+# Secrets usados (Secret Manager - projeto rmfarma):
 #   pharmahub_db_url, pharmahub_db_user, pharmahub_db_password,
 #   pharmahub_api_key_pharma_app, pharmahub_api_key_admin_dashboard
 

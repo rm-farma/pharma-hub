@@ -47,7 +47,7 @@ gcloud auth login
 gcloud auth application-default login
 
 # Definir o projeto GCP de dev
-gcloud config set project rm-farma-dev
+gcloud config set project rmfarma-dev
 ```
 
 ---

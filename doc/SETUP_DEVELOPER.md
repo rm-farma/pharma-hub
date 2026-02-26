@@ -64,20 +64,20 @@ gcloud auth login
 gcloud auth application-default login
 
 # Definir o projeto GCP de desenvolvimento
-gcloud config set project rm-farma-dev
+gcloud config set project rmfarma-dev
 ```
 
 ### Consultar secrets do Secret Manager
 
 ```bash
 # URL do banco de dev
-gcloud secrets versions access latest --secret=pharmahub_db_url --project=rm-farma-dev
+gcloud secrets versions access latest --secret=pharmahub_db_url --project=rmfarma-dev
 
 # Senha do banco
-gcloud secrets versions access latest --secret=pharmahub_db_password --project=rm-farma-dev
+gcloud secrets versions access latest --secret=pharmahub_db_password --project=rmfarma-dev
 
 # API Key de um cliente
-gcloud secrets versions access latest --secret=pharmahub_api_key_pharma_app --project=rm-farma-dev
+gcloud secrets versions access latest --secret=pharmahub_api_key_pharma_app --project=rmfarma-dev
 ```
 
 ---
@@ -131,7 +131,7 @@ A API sobe em **http://localhost:8080**
 - [ ] Instalar gcloud CLI (`brew install google-cloud-sdk`)
 - [ ] `gcloud auth login`
 - [ ] `gcloud auth application-default login`
-- [ ] `gcloud config set project rm-farma-dev`
+- [ ] `gcloud config set project rmfarma-dev`
 - [ ] Clonar o repositório
 - [ ] `cd pharma-hub` (SDKMAN troca para Java 21 automaticamente)
 - [ ] `cp .env.example .env`
@@ -143,8 +143,8 @@ A API sobe em **http://localhost:8080**
 ## 8. Estrutura de ambientes / CI-CD
 
 ```
-Branch dev  → Cloud Build (cloudbuild-nonprod.yaml) → Cloud Run [rm-farma-dev]
-Branch main → Cloud Build (cloudbuild-prod.yaml)    → Cloud Run [rm-farma]
+Branch dev  → Cloud Build (cloudbuild-nonprod.yaml) → Cloud Run [rmfarma-dev]
+Branch main → Cloud Build (cloudbuild-prod.yaml)    → Cloud Run [rmfarma]
 ```
 
 **Secrets no GCP Secret Manager** (criados uma vez por projeto):
