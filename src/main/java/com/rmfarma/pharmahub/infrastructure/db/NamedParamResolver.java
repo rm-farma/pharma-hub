@@ -16,7 +16,8 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class NamedParamResolver {
 
-    private static final Pattern NAMED_PARAM_PATTERN = Pattern.compile(":(\\w+)");
+    // Captura :param mas ignora ::cast do PostgreSQL (ex: ::numeric, ::text)
+    private static final Pattern NAMED_PARAM_PATTERN = Pattern.compile("(?<!:):(?!:)(\\w+)");
 
     public record ResolvedQuery(String sql, List<ParamBinding> bindings) {
     }

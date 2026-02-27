@@ -20,11 +20,19 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class JdbcQueryExecutor implements QueryExecutor {
 
     private static final Logger LOG = Logger.getLogger(JdbcQueryExecutor.class);
+
+    /**
+     * Detecta LIMIT no final do SQL (hardcoded ou com named param :limit).
+     * Ignora LIMIT dentro de subqueries — só faz match no LIMIT mais externo no final do SQL.
+     */
+    private static final Pattern TRAILING_LIMIT_PATTERN =
+            Pattern.compile("(?i)\\bLIMIT\\s+(:?\\w+|\\d+)\\s*$");
 
     private final AgroalDataSource dataSource;
     private final NamedParamResolver paramResolver;
@@ -44,15 +52,18 @@ public class JdbcQueryExecutor implements QueryExecutor {
     @Override
     @SuppressWarnings("unchecked")
     public <T> PagedResult<T> executePaged(QueryDefinition definition, Map<String, Object> params, int page, int pageSize) {
-        String sql = definition.sqlTemplate();
+        String sql = definition.sqlTemplate().stripTrailing();
         int offset = page * pageSize;
 
+        // Para o COUNT, usamos o SQL sem LIMIT/OFFSET (removemos trailing LIMIT se existir)
+        String sqlForCount = stripTrailingLimit(sql);
+
         // 1. COUNT query via subquery wrapping
-        long totalItems = executeCount(sql, params, definition);
+        long totalItems = executeCount(sqlForCount, params, definition);
         int totalPages = (int) Math.ceil((double) totalItems / pageSize);
 
-        // 2. Data query com LIMIT/OFFSET
-        String dataSql = appendLimitOffset(sql, pageSize, offset);
+        // 2. Data query: remover LIMIT original e usar nosso LIMIT/OFFSET
+        String dataSql = stripTrailingLimit(sql) + "\nLIMIT " + pageSize + " OFFSET " + offset;
         NamedParamResolver.ResolvedQuery resolved = paramResolver.resolve(dataSql, params, definition);
         ResultSetMapper<T> mapper = (ResultSetMapper<T>) resolveMapper(definition.key());
 
@@ -64,10 +75,12 @@ public class JdbcQueryExecutor implements QueryExecutor {
     @Override
     @SuppressWarnings("unchecked")
     public <T> UnpagedResult<T> executeUnpaged(QueryDefinition definition, Map<String, Object> params, int maxRows) {
-        String sql = definition.sqlTemplate();
-        int fetchSize = maxRows + 1;
+        String sql = definition.sqlTemplate().stripTrailing();
 
-        sql = appendLimit(sql, fetchSize);
+        // Se o SQL já tem LIMIT (hardcoded ou :limit param), não adicionar outro
+        if (!hasTrailingLimit(sql)) {
+            sql = sql + "\nLIMIT " + (maxRows + 1);
+        }
 
         NamedParamResolver.ResolvedQuery resolved = paramResolver.resolve(sql, params, definition);
         ResultSetMapper<T> mapper = (ResultSetMapper<T>) resolveMapper(definition.key());
@@ -82,8 +95,8 @@ public class JdbcQueryExecutor implements QueryExecutor {
         return new UnpagedResult<>(items, items.size(), truncated);
     }
 
-    private long executeCount(String originalSql, Map<String, Object> params, QueryDefinition definition) {
-        String countSql = "SELECT COUNT(*) AS total FROM (" + originalSql.stripTrailing() + ") AS count_query";
+    private long executeCount(String sqlWithoutLimit, Map<String, Object> params, QueryDefinition definition) {
+        String countSql = "SELECT COUNT(*) AS total FROM (" + sqlWithoutLimit + ") AS count_query";
         NamedParamResolver.ResolvedQuery resolved = paramResolver.resolve(countSql, params, definition);
 
         try (Connection conn = dataSource.getConnection();
@@ -109,6 +122,9 @@ public class JdbcQueryExecutor implements QueryExecutor {
 
     private <T> List<T> executeQuery(NamedParamResolver.ResolvedQuery resolved, ResultSetMapper<T> mapper, long timeoutMs) {
         List<T> results = new ArrayList<>();
+
+        LOG.debugv("Executando SQL: {0}", resolved.sql());
+        LOG.debugv("Bindings: {0}", resolved.bindings());
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(resolved.sql())) {
@@ -142,12 +158,19 @@ public class JdbcQueryExecutor implements QueryExecutor {
         return genericMapMapper;
     }
 
-    private String appendLimitOffset(String sql, int limit, int offset) {
-        return sql.stripTrailing() + "\nLIMIT " + limit + " OFFSET " + offset;
+    /**
+     * Verifica se o SQL termina com LIMIT (hardcoded ou :param).
+     */
+    private boolean hasTrailingLimit(String sql) {
+        return TRAILING_LIMIT_PATTERN.matcher(sql.stripTrailing()).find();
     }
 
-    private String appendLimit(String sql, int limit) {
-        return sql.stripTrailing() + "\nLIMIT " + limit;
+    /**
+     * Remove o LIMIT final do SQL (hardcoded ou :param), preservando o restante.
+     * Usado para COUNT e para substituir pelo nosso LIMIT/OFFSET na paginação.
+     */
+    private String stripTrailingLimit(String sql) {
+        return TRAILING_LIMIT_PATTERN.matcher(sql.stripTrailing()).replaceAll("").stripTrailing();
     }
 }
 
