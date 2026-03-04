@@ -94,9 +94,9 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01"
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01"
                               },
                               "page":     null,
                               "pageSize": null,
@@ -110,9 +110,9 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01"
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01"
                               },
                               "page":     null,
                               "pageSize": null,
@@ -126,11 +126,11 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":       "12345678000100",
-                                "startDate1": "2025-01-01",
-                                "endDate1":   "2025-02-01",
-                                "startDate2": "2024-01-01",
-                                "endDate2":   "2024-02-01"
+                                "cnpj":       "06297687000236",
+                                "startDate1": "2026-01-01",
+                                "endDate1":   "2026-02-01",
+                                "startDate2": "2025-01-01",
+                                "endDate2":   "2025-02-01"
                               },
                               "page":     null,
                               "pageSize": null,
@@ -144,9 +144,9 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01",
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01",
                                 "limit":     10
                               },
                               "page":     1,
@@ -161,9 +161,9 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01",
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01",
                                 "limit":     10
                               },
                               "page":     1,
@@ -178,7 +178,7 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":       "12345678000100",
+                                "cnpj":       "06297687000236",
                                 "searchTerm": "%dipirona%"
                               },
                               "page":     1,
@@ -193,7 +193,7 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100"
+                                "cnpj": "06297687000236"
                               },
                               "page":     null,
                               "pageSize": null,
@@ -207,7 +207,7 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":  "12345678000100",
+                                "cnpj":  "06297687000236",
                                 "limit": 20
                               },
                               "page":     1,
@@ -222,7 +222,7 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":  "12345678000100",
+                                "cnpj":  "06297687000236",
                                 "limit": 20
                               },
                               "page":     1,
@@ -237,9 +237,9 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01"
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01"
                               },
                               "page":     null,
                               "pageSize": null,
@@ -253,9 +253,9 @@ public class QueryExecutionResource {
                     value = """
                             {
                               "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01",
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01",
                                 "classeAbc": "A"
                               },
                               "page":     1,
@@ -342,8 +342,8 @@ public class QueryExecutionResource {
                               "truncatedMessage": null,
                               "items": [
                                 {
-                                  "periodoBase":            "2025-01-01",
-                                  "periodoComparado":       "2024-01-01",
+                                  "periodoBase":            "2026-01-01",
+                                  "periodoComparado":       "2025-01-01",
                                   "faturamentoBase":        589430.75,
                                   "faturamentoComparado":   512300.00,
                                   "variacaoFaturamento":    15.07,
