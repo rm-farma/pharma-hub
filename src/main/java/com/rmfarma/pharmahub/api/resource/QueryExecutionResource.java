@@ -72,168 +72,293 @@ public class QueryExecutionResource {
         example = "top-sellers"
     )
     @RequestBody(
-        description = "Parâmetros da query e opções de paginação.",
+        description = """
+                Estrutura do request — todos os campos disponíveis:
+
+                | Campo      | Tipo      | Default  | Descrição                                                                    |
+                |------------|-----------|----------|------------------------------------------------------------------------------|
+                | `params`   | `object`  | —        | Parâmetros da query. Variam por query — consulte os exemplos abaixo          |
+                | `page`     | `integer` | `1`      | Número da página, **começa em 1**. Ignorado quando `unpaged: true`           |
+                | `pageSize` | `integer` | *varies* | Itens por página. Máximo e default variam por query. Ignorado se `unpaged`   |
+                | `unpaged`  | `boolean` | `false`  | Se `true`, retorna todos os registros até `maxUnpagedRows` sem paginação     |
+
+                > **Dica:** use `GET /queries/{key}` para ver os parâmetros exigidos, defaults e limites de cada query.
+                """,
         required = true,
         content = @Content(
             mediaType = MediaType.APPLICATION_JSON,
             examples = {
                 @ExampleObject(
-                    name = "sales-summary — resumo de vendas (unpaged)",
-                    summary = "sales-summary: total faturado e pedidos por CNPJ/período",
+                    name = "01 · sales-summary (unpaged)",
+                    summary = "sales-summary — Total faturado e total de pedidos. Sempre retorna 1 linha.",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
+                                "cnpj":      "12345678000100",
                                 "startDate": "2025-01-01",
-                                "endDate": "2025-02-01"
+                                "endDate":   "2025-02-01"
                               },
-                              "unpaged": true
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "sales-overview — visão geral com CMV (unpaged)",
-                    summary = "sales-overview: faturamento, CMV e pedidos",
+                    name = "02 · sales-overview (unpaged)",
+                    summary = "sales-overview — Faturamento, CMV e total de pedidos. Sempre retorna 1 linha.",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
+                                "cnpj":      "12345678000100",
                                 "startDate": "2025-01-01",
-                                "endDate": "2025-02-01"
+                                "endDate":   "2025-02-01"
                               },
-                              "unpaged": true
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "top-sellers — top vendedores paginado",
-                    summary = "top-sellers: ranking de vendedores por faturamento",
+                    name = "03 · sales-comparison (unpaged)",
+                    summary = "sales-comparison — Comparativo de dois períodos com variação % de faturamento, itens e ticket médio. Retorna 1 linha.",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate": "2025-02-01",
-                                "limit": 10
-                              },
-                              "page": 1,
-                              "pageSize": 10
-                            }
-                            """
-                ),
-                @ExampleObject(
-                    name = "top-products — top produtos paginado",
-                    summary = "top-products: ranking de produtos por quantidade vendida",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj": "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate": "2025-02-01",
-                                "limit": 20
-                              },
-                              "page": 1,
-                              "pageSize": 20
-                            }
-                            """
-                ),
-                @ExampleObject(
-                    name = "sales-comparison — comparativo de dois períodos (unpaged)",
-                    summary = "sales-comparison: variação % de faturamento, itens e ticket médio",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj": "12345678000100",
+                                "cnpj":       "12345678000100",
                                 "startDate1": "2025-01-01",
                                 "endDate1":   "2025-02-01",
                                 "startDate2": "2024-01-01",
                                 "endDate2":   "2024-02-01"
                               },
-                              "unpaged": true
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "stock-search — busca de produto no estoque",
-                    summary = "stock-search: busca por EAN ou nome (ILIKE)",
+                    name = "04 · top-sellers (paginado, página 1)",
+                    summary = "top-sellers — Ranking de vendedores por faturamento. Paginado. default=10, max pageSize=50.",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
-                                "searchTerm": "%dipirona%"
+                                "cnpj":      "12345678000100",
+                                "startDate": "2025-01-01",
+                                "endDate":   "2025-02-01",
+                                "limit":     10
                               },
-                              "page": 1,
-                              "pageSize": 20
+                              "page":     1,
+                              "pageSize": 10,
+                              "unpaged":  false
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "stock-metrics — métricas gerais do estoque (unpaged)",
-                    summary = "stock-metrics: custo total e itens de alta rotatividade",
+                    name = "04 · top-sellers (paginado, página 2)",
+                    summary = "top-sellers — Como buscar a página 2: incremente page mantendo os mesmos params e pageSize.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "12345678000100",
+                                "startDate": "2025-01-01",
+                                "endDate":   "2025-02-01",
+                                "limit":     10
+                              },
+                              "page":     2,
+                              "pageSize": 10,
+                              "unpaged":  false
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "04 · top-sellers (unpaged — exportar tudo)",
+                    summary = "top-sellers — Modo sem paginação: retorna todos os vendedores de uma vez (até 500 registros).",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "12345678000100",
+                                "startDate": "2025-01-01",
+                                "endDate":   "2025-02-01",
+                                "limit":     500
+                              },
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "05 · top-products (paginado)",
+                    summary = "top-products — Ranking de produtos por quantidade vendida. Paginado. default=10, max pageSize=100.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "12345678000100",
+                                "startDate": "2025-01-01",
+                                "endDate":   "2025-02-01",
+                                "limit":     10
+                              },
+                              "page":     1,
+                              "pageSize": 10,
+                              "unpaged":  false
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "05 · top-products (unpaged — exportar tudo)",
+                    summary = "top-products — Sem paginação: retorna todos os produtos de uma vez (até 1000 registros).",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "12345678000100",
+                                "startDate": "2025-01-01",
+                                "endDate":   "2025-02-01",
+                                "limit":     1000
+                              },
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "06 · stock-search (paginado)",
+                    summary = "stock-search — Busca por EAN ou nome (ILIKE). O % deve ser enviado pelo cliente. Não suporta unpaged. default=20, max pageSize=100.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":       "12345678000100",
+                                "searchTerm": "%dipirona%"
+                              },
+                              "page":     1,
+                              "pageSize": 20,
+                              "unpaged":  false
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "07 · stock-metrics (unpaged)",
+                    summary = "stock-metrics — Custo total do estoque e itens de alta rotatividade. Sempre retorna 1 linha.",
                     value = """
                             {
                               "params": {
                                 "cnpj": "12345678000100"
                               },
-                              "unpaged": true
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "stock-without-sales — estoque sem venda (paginado)",
-                    summary = "stock-without-sales: produtos em estoque que nunca tiveram venda",
+                    name = "08 · stock-without-sales (paginado)",
+                    summary = "stock-without-sales — Produtos em estoque que nunca tiveram venda. default=20, max pageSize=100.",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
+                                "cnpj":  "12345678000100",
                                 "limit": 20
                               },
-                              "page": 1,
-                              "pageSize": 20
+                              "page":     1,
+                              "pageSize": 20,
+                              "unpaged":  false
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "idle-stock — estoque parado com resumo (paginado)",
-                    summary = "idle-stock: produtos parados com custo total e valor de venda",
+                    name = "08 · stock-without-sales (unpaged — exportar tudo)",
+                    summary = "stock-without-sales — Sem paginação: retorna todos os produtos parados de uma vez (até 5000 registros).",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
+                                "cnpj":  "12345678000100",
+                                "limit": 5000
+                              },
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "09 · idle-stock (paginado)",
+                    summary = "idle-stock — Estoque parado com totais agregados (totalSkus, totalUnidades, valorTotalCusto, valorTotalVenda). default=20, max pageSize=100.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":  "12345678000100",
                                 "limit": 20
                               },
-                              "page": 1,
-                              "pageSize": 20
+                              "page":     1,
+                              "pageSize": 20,
+                              "unpaged":  false
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "abc-curve-summary — resumo curva ABC (unpaged)",
-                    summary = "abc-curve-summary: total de produtos e faturamento por classe A/B/C",
+                    name = "09 · idle-stock (unpaged — exportar tudo)",
+                    summary = "idle-stock — Sem paginação: retorna todo o estoque parado de uma vez (até 5000 registros). Os campos de totais se repetem em cada linha.",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate": "2025-02-01"
+                                "cnpj":  "12345678000100",
+                                "limit": 5000
                               },
-                              "unpaged": true
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "abc-curve-products — detalhamento curva ABC (paginado)",
-                    summary = "abc-curve-products: produtos com classe, faturamento, estoque e preços",
+                    name = "10 · abc-curve-summary (unpaged)",
+                    summary = "abc-curve-summary — Totais de produtos e faturamento por classe A/B/C. Sempre retorna 1 linha.",
                     value = """
                             {
                               "params": {
-                                "cnpj": "12345678000100",
+                                "cnpj":      "12345678000100",
                                 "startDate": "2025-01-01",
-                                "endDate": "2025-02-01",
+                                "endDate":   "2025-02-01"
+                              },
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "11 · abc-curve-products (paginado, filtrando classe A)",
+                    summary = "abc-curve-products — Produtos com classe ABC, faturamento, estoque e preços. classeAbc é opcional (A, B ou C). default=50, max pageSize=200.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "12345678000100",
+                                "startDate": "2025-01-01",
+                                "endDate":   "2025-02-01",
                                 "classeAbc": "A"
                               },
-                              "page": 1,
-                              "pageSize": 50
+                              "page":     1,
+                              "pageSize": 50,
+                              "unpaged":  false
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "11 · abc-curve-products (unpaged — todas as classes)",
+                    summary = "abc-curve-products — Sem filtro de classe e sem paginação: retorna todos os produtos classificados A/B/C (até 10.000 registros).",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "12345678000100",
+                                "startDate": "2025-01-01",
+                                "endDate":   "2025-02-01",
+                                "classeAbc": null
+                              },
+                              "page":     null,
+                              "pageSize": null,
+                              "unpaged":  true
                             }
                             """
                 )
@@ -242,61 +367,182 @@ public class QueryExecutionResource {
     )
     @APIResponse(
         responseCode = "200",
-        description = "Query executada com sucesso. Retorna `PagedResponse` ou `UnpagedResponse` conforme o modo.",
+        description = "Query executada com sucesso. Retorna `PagedResponse` (paginado) ou `UnpagedResponse` (`unpaged: true`).",
         content = @Content(
             mediaType = MediaType.APPLICATION_JSON,
             examples = {
                 @ExampleObject(
-                    name = "Resposta paginada (top-sellers)",
-                    summary = "Exemplo de resposta paginada",
+                    name = "200 · PAGED — top-sellers (página 1 de 4)",
+                    summary = "Resposta paginada: queryKey, mode, page, pageSize, totalItems, totalPages, items, durationMs, requestId",
                     value = """
                             {
-                              "queryKey": "top-sellers",
-                              "mode": "PAGED",
-                              "page": 1,
-                              "pageSize": 10,
+                              "queryKey":   "top-sellers",
+                              "mode":       "PAGED",
+                              "page":       1,
+                              "pageSize":   10,
                               "totalItems": 34,
                               "totalPages": 4,
                               "items": [
                                 { "seller": "João Silva",  "totalAmount": 128450.90, "totalOrders": 312 },
-                                { "seller": "Maria Souza", "totalAmount": 97320.50,  "totalOrders": 245 }
+                                { "seller": "Maria Souza", "totalAmount":  97320.50, "totalOrders": 245 },
+                                { "seller": "Carlos Lima", "totalAmount":  84100.00, "totalOrders": 198 }
                               ],
                               "durationMs": 42,
-                              "requestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                              "requestId":  "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "Resposta unpaged (sales-summary)",
-                    summary = "Exemplo de resposta sem paginação",
+                    name = "200 · UNPAGED — sales-summary (1 linha)",
+                    summary = "Resposta unpaged: queryKey, mode, returnedItems, truncated, truncatedMessage, items, durationMs, requestId",
                     value = """
                             {
-                              "queryKey": "sales-summary",
-                              "mode": "UNPAGED",
-                              "returnedItems": 1,
-                              "truncated": false,
+                              "queryKey":         "sales-summary",
+                              "mode":             "UNPAGED",
+                              "returnedItems":    1,
+                              "truncated":        false,
                               "truncatedMessage": null,
                               "items": [
                                 { "totalAmount": 589430.75, "totalOrders": 1842 }
                               ],
                               "durationMs": 18,
-                              "requestId": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                              "requestId":  "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                             }
                             """
                 ),
                 @ExampleObject(
-                    name = "Resposta truncada (unpaged com muitos dados)",
-                    summary = "Exemplo de resposta com truncamento ativo",
+                    name = "200 · UNPAGED — sales-overview (1 linha com CMV)",
+                    summary = "Resposta sales-overview: totalAmount, cmv e totalOrders",
                     value = """
                             {
-                              "queryKey": "abc-curve-products",
-                              "mode": "UNPAGED",
-                              "returnedItems": 10000,
-                              "truncated": true,
+                              "queryKey":         "sales-overview",
+                              "mode":             "UNPAGED",
+                              "returnedItems":    1,
+                              "truncated":        false,
+                              "truncatedMessage": null,
+                              "items": [
+                                { "totalAmount": 589430.75, "cmv": 312840.50, "totalOrders": 1842 }
+                              ],
+                              "durationMs": 22,
+                              "requestId":  "c1d2e3f4-a5b6-7890-cdef-123456789012"
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "200 · UNPAGED — sales-comparison (1 linha com variações %)",
+                    summary = "Resposta sales-comparison: dois períodos com faturamento, itens e ticket médio e variação % de cada",
+                    value = """
+                            {
+                              "queryKey":         "sales-comparison",
+                              "mode":             "UNPAGED",
+                              "returnedItems":    1,
+                              "truncated":        false,
+                              "truncatedMessage": null,
+                              "items": [
+                                {
+                                  "periodoBase":            "2025-01-01",
+                                  "periodoComparado":       "2024-01-01",
+                                  "faturamentoBase":        589430.75,
+                                  "faturamentoComparado":   512300.00,
+                                  "variacaoFaturamento":    15.07,
+                                  "itensVendidosBase":      4821,
+                                  "itensVendidosComparado": 4102,
+                                  "variacaoItensVendidos":  17.53,
+                                  "ticketMedioBase":        320.15,
+                                  "ticketMedioComparado":   287.40,
+                                  "variacaoTicketMedio":    11.39
+                                }
+                              ],
+                              "durationMs": 35,
+                              "requestId":  "d4e5f6a7-b8c9-0123-defa-234567890123"
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "200 · UNPAGED — abc-curve-summary (1 linha com totais A/B/C)",
+                    summary = "Resposta abc-curve-summary: totais de produtos e faturamento por classe",
+                    value = """
+                            {
+                              "queryKey":         "abc-curve-summary",
+                              "mode":             "UNPAGED",
+                              "returnedItems":    1,
+                              "truncated":        false,
+                              "truncatedMessage": null,
+                              "items": [
+                                {
+                                  "totalProdutos":  842,
+                                  "totalProdutosA": 98,
+                                  "totalProdutosB": 186,
+                                  "totalProdutosC": 558,
+                                  "faturamentoTotal": 589430.75,
+                                  "faturamentoA":    471544.60,
+                                  "faturamentoB":     88414.61,
+                                  "faturamentoC":     29471.54
+                                }
+                              ],
+                              "durationMs": 95,
+                              "requestId":  "e5f6a7b8-c9d0-1234-efab-345678901234"
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "200 · PAGED — idle-stock (com totais agregados em cada linha)",
+                    summary = "Resposta idle-stock: cada linha inclui dados do produto E os totais agregados (totalSkus, totalUnidades, valorTotalCusto, valorTotalVenda)",
+                    value = """
+                            {
+                              "queryKey":   "idle-stock",
+                              "mode":       "PAGED",
+                              "page":       1,
+                              "pageSize":   20,
+                              "totalItems": 87,
+                              "totalPages": 5,
+                              "items": [
+                                {
+                                  "ean":            "7896714200046",
+                                  "apresentacao":   "VITAMINA C 1G 30CPR",
+                                  "fabricante":     "EMS",
+                                  "grupoMacro":     "VITAMINAS",
+                                  "saldoEstoque":   240,
+                                  "custoMedioTotal": 1680.00,
+                                  "precoVenda":     12.90,
+                                  "totalSkus":      "87",
+                                  "totalUnidades":  "4321",
+                                  "valorTotalCusto": "38420.50",
+                                  "valorTotalVenda": "71840.90"
+                                }
+                              ],
+                              "durationMs": 78,
+                              "requestId":  "f6a7b8c9-d0e1-2345-fabc-456789012345"
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "200 · UNPAGED truncado — abc-curve-products (limite atingido)",
+                    summary = "Quando o número de registros excede maxUnpagedRows: truncated=true e truncatedMessage informa o corte. Use paginação para evitar truncamento.",
+                    value = """
+                            {
+                              "queryKey":         "abc-curve-products",
+                              "mode":             "UNPAGED",
+                              "returnedItems":    10000,
+                              "truncated":        true,
                               "truncatedMessage": "Resultado truncado. Máximo de 10000 linhas retornadas.",
-                              "items": [ "..." ],
+                              "items": [
+                                {
+                                  "ean":                  "7896714200046",
+                                  "apresentacao":         "DIPIRONA SODICA 500MG 20CPR",
+                                  "faturamentoTotal":     48320.50,
+                                  "quantidadeVendida":    9210,
+                                  "numTransacoes":        412,
+                                  "percentualIndividual": 8.19,
+                                  "percentualAcumulado":  8.19,
+                                  "classeAbc":            "A",
+                                  "saldoEstoque":         340,
+                                  "precoVenda":           12.90,
+                                  "custoMedio":            7.20
+                                }
+                              ],
                               "durationMs": 310,
-                              "requestId": "c3d4e5f6-a7b8-9012-cdef-123456789012"
+                              "requestId":  "a9b8c7d6-e5f4-3210-abcd-098765432100"
                             }
                             """
                 )
