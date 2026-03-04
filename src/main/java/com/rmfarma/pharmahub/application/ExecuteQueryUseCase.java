@@ -49,7 +49,7 @@ public class ExecuteQueryUseCase {
                     definition, resolvedParams, definition.maxUnpagedRows());
             return new ExecutionResult(mode, result, definition);
         } else {
-            int resolvedPage = (page != null && page >= 0) ? page : 0;
+            int resolvedPage = (page != null && page >= 1) ? page : 1;
             int resolvedPageSize = resolvePageSize(definition, pageSize);
             PagedResult<?> result = queryExecutor.executePaged(
                     definition, resolvedParams, resolvedPage, resolvedPageSize);

@@ -53,7 +53,7 @@ public class JdbcQueryExecutor implements QueryExecutor {
     @SuppressWarnings("unchecked")
     public <T> PagedResult<T> executePaged(QueryDefinition definition, Map<String, Object> params, int page, int pageSize) {
         String sql = definition.sqlTemplate().stripTrailing();
-        int offset = page * pageSize;
+        int offset = (page - 1) * pageSize;
 
         // Para o COUNT, usamos o SQL sem LIMIT/OFFSET (removemos trailing LIMIT se existir)
         String sqlForCount = stripTrailingLimit(sql);
