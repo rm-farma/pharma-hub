@@ -139,8 +139,8 @@ public class QueryExecutionResource {
                             """
                 ),
                 @ExampleObject(
-                    name = "04 · top-sellers (paginado, página 1)",
-                    summary = "top-sellers — Ranking de vendedores por faturamento. Paginado. default=10, max pageSize=50.",
+                    name = "04 · top-sellers (paginado)",
+                    summary = "top-sellers — Ranking de vendedores por faturamento. Para navegar, incremente page mantendo os demais campos. default=10, max pageSize=50.",
                     value = """
                             {
                               "params": {
@@ -152,40 +152,6 @@ public class QueryExecutionResource {
                               "page":     1,
                               "pageSize": 10,
                               "unpaged":  false
-                            }
-                            """
-                ),
-                @ExampleObject(
-                    name = "04 · top-sellers (paginado, página 2)",
-                    summary = "top-sellers — Como buscar a página 2: incremente page mantendo os mesmos params e pageSize.",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01",
-                                "limit":     10
-                              },
-                              "page":     2,
-                              "pageSize": 10,
-                              "unpaged":  false
-                            }
-                            """
-                ),
-                @ExampleObject(
-                    name = "04 · top-sellers (unpaged — exportar tudo)",
-                    summary = "top-sellers — Modo sem paginação: retorna todos os vendedores de uma vez (até 500 registros).",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01",
-                                "limit":     500
-                              },
-                              "page":     null,
-                              "pageSize": null,
-                              "unpaged":  true
                             }
                             """
                 ),
@@ -203,23 +169,6 @@ public class QueryExecutionResource {
                               "page":     1,
                               "pageSize": 10,
                               "unpaged":  false
-                            }
-                            """
-                ),
-                @ExampleObject(
-                    name = "05 · top-products (unpaged — exportar tudo)",
-                    summary = "top-products — Sem paginação: retorna todos os produtos de uma vez (até 1000 registros).",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01",
-                                "limit":     1000
-                              },
-                              "page":     null,
-                              "pageSize": null,
-                              "unpaged":  true
                             }
                             """
                 ),
@@ -268,23 +217,8 @@ public class QueryExecutionResource {
                             """
                 ),
                 @ExampleObject(
-                    name = "08 · stock-without-sales (unpaged — exportar tudo)",
-                    summary = "stock-without-sales — Sem paginação: retorna todos os produtos parados de uma vez (até 5000 registros).",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj":  "12345678000100",
-                                "limit": 5000
-                              },
-                              "page":     null,
-                              "pageSize": null,
-                              "unpaged":  true
-                            }
-                            """
-                ),
-                @ExampleObject(
                     name = "09 · idle-stock (paginado)",
-                    summary = "idle-stock — Estoque parado com totais agregados (totalSkus, totalUnidades, valorTotalCusto, valorTotalVenda). default=20, max pageSize=100.",
+                    summary = "idle-stock — Estoque parado com totais agregados (totalSkus, totalUnidades, valorTotalCusto, valorTotalVenda) repetidos em cada linha. default=20, max pageSize=100.",
                     value = """
                             {
                               "params": {
@@ -294,21 +228,6 @@ public class QueryExecutionResource {
                               "page":     1,
                               "pageSize": 20,
                               "unpaged":  false
-                            }
-                            """
-                ),
-                @ExampleObject(
-                    name = "09 · idle-stock (unpaged — exportar tudo)",
-                    summary = "idle-stock — Sem paginação: retorna todo o estoque parado de uma vez (até 5000 registros). Os campos de totais se repetem em cada linha.",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj":  "12345678000100",
-                                "limit": 5000
-                              },
-                              "page":     null,
-                              "pageSize": null,
-                              "unpaged":  true
                             }
                             """
                 ),
@@ -329,8 +248,8 @@ public class QueryExecutionResource {
                             """
                 ),
                 @ExampleObject(
-                    name = "11 · abc-curve-products (paginado, filtrando classe A)",
-                    summary = "abc-curve-products — Produtos com classe ABC, faturamento, estoque e preços. classeAbc é opcional (A, B ou C). default=50, max pageSize=200.",
+                    name = "11 · abc-curve-products (paginado)",
+                    summary = "abc-curve-products — Produtos com classe ABC, faturamento, estoque e preços. classeAbc é opcional (A, B ou C). Omita para retornar todas as classes. default=50, max pageSize=200.",
                     value = """
                             {
                               "params": {
@@ -342,23 +261,6 @@ public class QueryExecutionResource {
                               "page":     1,
                               "pageSize": 50,
                               "unpaged":  false
-                            }
-                            """
-                ),
-                @ExampleObject(
-                    name = "11 · abc-curve-products (unpaged — todas as classes)",
-                    summary = "abc-curve-products — Sem filtro de classe e sem paginação: retorna todos os produtos classificados A/B/C (até 10.000 registros).",
-                    value = """
-                            {
-                              "params": {
-                                "cnpj":      "12345678000100",
-                                "startDate": "2025-01-01",
-                                "endDate":   "2025-02-01",
-                                "classeAbc": null
-                              },
-                              "page":     null,
-                              "pageSize": null,
-                              "unpaged":  true
                             }
                             """
                 )
