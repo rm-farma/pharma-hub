@@ -18,7 +18,7 @@ import jakarta.ws.rs.core.Application;
         description = """
                 ## Sobre o Pharma Hub
 
-                O **Pharma Hub** é o repositório centralizado de consultas SQL analíticas da RM Farma.
+                O **Pharma Hub** é o repositório centralizado de consultas SQL analíticas do Grupo Hiper Saude.
                 Ele expõe queries pré-aprovadas via REST, com suporte a paginação, parâmetros tipados e controle de acesso por API Key.
 
                 ## Como usar
@@ -59,7 +59,7 @@ import jakarta.ws.rs.core.Application;
                 | `abc-curve-products` | Detalhamento de produtos na curva ABC |
                 """,
         contact = @Contact(
-            name = "RM Farma — Plataforma",
+            name = "Grupo Hiper Saude — Plataforma",
             email = "plataforma@rmfarma.com.br"
         )
     ),
