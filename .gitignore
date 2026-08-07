@@ -44,3 +44,9 @@ env.yaml
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+
+# Graphify - artefatos regeneráveis (rode /gsd:graphify build para recriar)
+graphify-out/
+.planning/graphs/graph.json
+.planning/graphs/graph.html
+.planning/graphs/.last-build-snapshot.json

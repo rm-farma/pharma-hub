@@ -15,6 +15,7 @@
         <quarkus.platform.version>3.27.2</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.3</surefire-plugin.version>
+        <postgres-socket-factory.version>1.28.4</postgres-socket-factory.version>
     </properties>
 
     <dependencyManagement>
@@ -73,6 +74,13 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+        <!-- Cloud SQL Connector — permite JDBC autenticar via IAM (cloudSqlInstance=...)
+             em vez de depender de IP liberado na allowlist do Cloud SQL. -->
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>postgres-socket-factory</artifactId>
+            <version>${postgres-socket-factory.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>

@@ -1,8 +1,7 @@
-# Cloud Build — pharma-hub — PROD (branch: main/prod)
+# Cloud Build — pharma-hub — PROD (branch: main)
 #
 # Secrets usados (Secret Manager - projeto rmfarma):
-#   pharmahub_db_url, pharmahub_db_user, pharmahub_db_password,
-#   pharmahub_api_key_pharma_app, pharmahub_api_key_admin_dashboard
+#   gpt-db-host, gpt-db-user, gpt-db-password (banco compartilhado com dev)
 
 steps:
   # 1. Build Maven (uber-jar para Cloud Run)
@@ -57,7 +56,7 @@ steps:
       - '--port=8080'
       - '--no-allow-unauthenticated'
       - '--set-env-vars=QUARKUS_PROFILE=prod,LOG_LEVEL=${_LOG_LEVEL},LOG_JSON=true,GCP_LOGGING_ENABLED=true'
-      - '--set-secrets=DATABASE_URL=pharmahub_db_url:latest,DATABASE_USER=pharmahub_db_user:latest,DATABASE_PASSWORD=pharmahub_db_password:latest,API_KEY_PHARMA_APP=pharmahub_api_key_pharma_app:latest,API_KEY_ADMIN_DASHBOARD=pharmahub_api_key_admin_dashboard:latest'
+      - '--set-secrets=DATABASE_URL=gpt-db-host:latest,DATABASE_USER=gpt-db-user:latest,DATABASE_PASSWORD=gpt-db-password:latest'
 
 images:
   - '${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME}:$COMMIT_SHA'

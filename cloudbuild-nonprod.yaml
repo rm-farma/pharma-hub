@@ -1,15 +1,17 @@
 # Cloud Build - pharma-hub - NONPROD (branch: develop)
 #
 # Secrets usados (Secret Manager - projeto rmfarma-dev):
-#   pharmahub_db_url, pharmahub_db_user, pharmahub_db_password,
-#   pharmahub_api_key_pharma_app, pharmahub_api_key_admin_dashboard
+#   gpt-db-host, gpt-db-user, gpt-db-password (banco compartilhado com dev)
 
 steps:
   # 1. Build Maven (uber-jar para Cloud Run)
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'maven-build'
     entrypoint: 'mvn'
-    args: [ 'package', '-DskipTests', '-Dquarkus.package.jar.type=uber-jar' ]
+    # -Dquarkus.profile=nonprod é obrigatório aqui: swagger-ui/openapi.enable
+    # são propriedades de build-time, não runtime — sem isso, o QUARKUS_PROFILE
+    # setado no deploy (--set-env-vars) não teria efeito nenhum sobre o Swagger.
+    args: [ 'package', '-DskipTests', '-Dquarkus.package.jar.type=uber-jar', '-Dquarkus.profile=nonprod' ]
 
   # 2. Build da imagem Docker
   - name: 'gcr.io/cloud-builders/docker'
@@ -56,8 +58,8 @@ steps:
       - '--timeout=${_TIMEOUT}'
       - '--port=8080'
       - '--no-allow-unauthenticated'
-      - '--set-env-vars=QUARKUS_PROFILE=prod,LOG_LEVEL=${_LOG_LEVEL},LOG_JSON=true,GCP_LOGGING_ENABLED=true'
-      - '--set-secrets=DATABASE_URL=gpt_db_host:latest,DATABASE_USER=gpt_db_user:latest,DATABASE_PASSWORD=gpt_db_password:latest'
+      - '--set-env-vars=QUARKUS_PROFILE=nonprod,LOG_LEVEL=${_LOG_LEVEL},LOG_JSON=true,GCP_LOGGING_ENABLED=true'
+      - '--set-secrets=DATABASE_URL=gpt-db-host:latest,DATABASE_USER=gpt-db-user:latest,DATABASE_PASSWORD=gpt-db-password:latest'
 
 images:
   - '${_REPOSITORY_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY_NAME}/${_APP_NAME}:$COMMIT_SHA'
