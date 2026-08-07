@@ -263,7 +263,59 @@ develop     ●──●──●──●──●──●    ●──●─�
 feature/x      ●──●                    (release/1.1.0)
 ```
 
+### Ferramenta `git-flow` (opcional)
+
+O repositório já está inicializado com a extensão [git-flow](https://github.com/nvie/gitflow) (`git flow init`), que dá comandos de atalho para criar/finalizar as branches de apoio. Config já salva em `.git/config`:
+
+| Config | Valor |
+|---|---|
+| Branch de produção | `main` |
+| Branch de desenvolvimento | `develop` |
+| Prefixo de feature | `feature/` |
+| Prefixo de release | `release/` |
+| Prefixo de hotfix | `hotfix/` |
+| Prefixo de support | `support/` |
+| Prefixo de tag de versão | *(nenhum — tags ficam `v1.0.0`, não `versionv1.0.0`)* |
+
+Instalação (uma vez por máquina, não é obrigatória para trabalhar no projeto):
+
+```bash
+brew install git-flow-avh   # ou git-flow (nvie), qualquer um dos dois clientes funciona
+```
+
+Se preferir não instalar, os comandos equivalentes em git puro estão na segunda aba abaixo — dão exatamente o mesmo resultado.
+
 ### Comandos do dia a dia
+
+**Com a extensão `git-flow`:**
+
+```bash
+# Nova feature
+git flow feature start nome-da-feature       # cria feature/nome-da-feature a partir de develop
+# ... commits ...
+git push -u origin feature/nome-da-feature
+# Abrir PR no GitHub: feature/nome-da-feature -> develop
+# Após o merge do PR:
+git flow feature finish nome-da-feature      # limpa a branch local (já foi mergeada via PR)
+
+# Preparar uma release
+git flow release start 1.1.0                 # cria release/1.1.0 a partir de develop
+# ajustes finais, bump de versão, sem features novas
+git push -u origin release/1.1.0
+# PR: release/1.1.0 -> main (após aprovação)
+git flow release finish 1.1.0                # cria a tag v1.1.0 em main e mergeia de volta em develop
+
+# Hotfix urgente em produção
+git flow hotfix start corrige-bug-critico    # cria hotfix/corrige-bug-critico a partir de main
+# ... fix ...
+git push -u origin hotfix/corrige-bug-critico
+# PR: hotfix/... -> main
+git flow hotfix finish corrige-bug-critico   # cria a tag em main e mergeia de volta em develop
+```
+
+> ⚠️ **`git flow *  finish` faz merge local automaticamente**, sem passar por PR/code review. Se o merge já foi feito via PR no GitHub (fluxo recomendado, acima), o `finish` serve só para sincronizar `develop`/`main` locais e apagar a branch de apoio — rode-o só depois que o PR já tiver sido mergeado remotamente, senão ele duplica o merge localmente.
+
+**Sem a extensão (git puro — resultado idêntico):**
 
 ```bash
 # Nova feature
