@@ -115,7 +115,9 @@ Sobe em **http://localhost:8080**. O perfil `dev` busca a URL/usuário/senha do 
 | Perfil | Origem do banco | API Keys |
 |---|---|---|
 | `dev` (local) | Secret Manager `rmfarma-dev`: `gpt-db-host`, `gpt-db-user`, `gpt-db-password` | Hardcoded: `dev-api-key-123`, `test-api-key-456` |
-| `prod` (Cloud Run) | Secret Manager `rmfarma`: `pharmahub_db_url/user/password` *(⚠️ ver [CI/CD](#-cicd))* | `pharmahub_api_key_pharma_app`, `pharmahub_api_key_admin_dashboard` |
+| `prod` (Cloud Run) | Secret Manager `rmfarma`: `gpt-db-host`, `gpt-db-user`, `gpt-db-password` (banco compartilhado com dev) | Mesmas hardcoded acima — **⚠️ ver nota abaixo** |
+
+> ⚠️ As chaves `pharma-app`/`admin-dashboard` foram removidas em 2026-08-07 por não terem cliente real associado. Sem chaves específicas de prod, a API em produção passa a aceitar as **mesmas chaves hardcoded do dev** (`dev-api-key-123`, `test-api-key-456`) — elas estão públicas no código-fonte. Se o pharma-hub for exposto pra clientes reais, é preciso definir chaves de produção antes disso (ver [Pontos de atenção](#-pontos-de-atenção-conhecidos)).
 
 ## 🧪 Testando a API
 
@@ -186,12 +188,11 @@ flowchart LR
 - **Cloud Build**: builda a imagem e deploya no Cloud Run, um pipeline por ambiente (acima).
 
 <details>
-<summary><b>⚠️ Pendências antes do primeiro deploy automático</b> (auditado em 2026-08-06)</summary>
+<summary><b>⚠️ Pendências antes do primeiro deploy automático</b> (atualizado em 2026-08-07)</summary>
 <br>
 
-- Nenhuma trigger do Cloud Build está conectada ao repo `rm-farma/pharma-hub` — precisa criar as 2.
-- `cloudbuild-nonprod.yaml` referencia secrets com underscore (`gpt_db_host`); os reais em `rmfarma-dev` usam hífen (`gpt-db-host`) — e não injeta nenhuma API Key.
-- Os 5 secrets de prod (`pharmahub_db_url/user/password`, `pharmahub_api_key_*`) não existem ainda no projeto `rmfarma`.
+- Nenhuma trigger do Cloud Build está conectada ao repo `rm-farma/pharma-hub` — precisa criar as 2 (`develop` → nonprod, `main` → prod).
+- ✅ Nomes de secret corrigidos nos dois `cloudbuild-*.yaml` (`gpt-db-host/user/password`, com hífen, iguais nos dois ambientes) — não é mais bloqueio.
 - ✅ Permissões da service account do Cloud Build e o Artifact Registry `rm-farma` já estão OK nos dois projetos — não são bloqueio.
 
 </details>
@@ -219,8 +220,8 @@ Auditoria completa em [`.planning/codebase/CONCERNS.md`](.planning/codebase/CONC
 - 🔴 **Zero testes** em `src/test/java/`.
 - 🔴 Comparação de API Key vulnerável a timing attack (`ApiKeyFilter.java:60`).
 - 🟠 Mensagens de erro vazam detalhes internos ao cliente.
-- 🟡 `application-dev.properties`/`application-prod.properties` estão em Latin-1, não UTF-8.
-- 🟡 `env.yaml` está no `.gitignore` mas aparece modificado no `git status` — indício de que já foi commitado com credenciais; vale investigar o histórico.
+- 🟡 **Chave de API única e fixa, compartilhada entre dev e prod** (`dev-api-key-123`) — decisão consciente por enquanto (2026-08-07), não um esquecimento. Mitigado pelo `--no-allow-unauthenticated` do Cloud Run (já exige IAM do Google antes de chegar na aplicação). **TODO futuro:** implementar API Keys por cliente via Secret Manager antes de abrir a API pra consumidores externos reais.
+- 🟡 `env.yaml` foi removido do controle de versão (2026-08-07), mas já esteve commitado com credenciais em 2 commits antigos — a senha do banco ainda não foi trocada.
 
 ## 🔗 Links úteis
 

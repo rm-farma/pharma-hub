@@ -62,12 +62,10 @@
 - Custom API Key authentication (no external OAuth/OIDC provider)
   - Implementation: X-API-Key header validation in request interceptors/filters
   - API keys stored in configuration: `queryhub.security.api-keys.*` properties
-  - Dev keys (hardcoded in `application.properties` line 23-24):
+  - Keys (hardcoded in `application.properties` line 23-24, apply to every profile including prod — não há chaves específicas de prod hoje):
     - `dev-client`: `dev-api-key-123`
     - `test-client`: `test-api-key-456`
-  - Prod keys (injected from Secret Manager):
-    - `pharma-app`: `API_KEY_PHARMA_APP` env var
-    - `admin-dashboard`: `API_KEY_ADMIN_DASHBOARD` env var
+  - ⚠️ `pharma-app`/`admin-dashboard` (Secret Manager) foram removidos em 2026-08-07 por não terem cliente real associado — ver histórico do git se precisar reintroduzir
   - Configuration class: `src/main/java/com/rmfarma/pharmahub/infrastructure/config/ApiKeyConfig.java`
   - Usage: Checked in resource layer (e.g., `QueryExecutionResource.java` line 542-543 extracts X-Client-Id header)
   - OpenAPI security scheme: `ApiKeyAuth` - defined in `application-dev.properties` lines 58-62

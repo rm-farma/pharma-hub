@@ -106,8 +106,6 @@
   - `DATABASE_URL` - JDBC connection string
   - `DATABASE_USER` - Database username
   - `DATABASE_PASSWORD` - Database password
-  - `API_KEY_PHARMA_APP` - API key for pharma application client
-  - `API_KEY_ADMIN_DASHBOARD` - API key for admin dashboard client
   - Injected via Cloud Build `--set-secrets` from GCP Secret Manager
 
 - GCP Secret Manager (dev): Credentials fetched automatically via `gcloud auth application-default login`
