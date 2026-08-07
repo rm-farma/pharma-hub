@@ -8,7 +8,10 @@ steps:
   - name: 'maven:3.9-eclipse-temurin-21'
     id: 'maven-build'
     entrypoint: 'mvn'
-    args: [ 'package', '-DskipTests', '-Dquarkus.package.jar.type=uber-jar' ]
+    # -Dquarkus.profile=staging é obrigatório aqui: swagger-ui/openapi.enable
+    # são propriedades de build-time, não runtime — sem isso, o QUARKUS_PROFILE
+    # setado no deploy (--set-env-vars) não teria efeito nenhum sobre o Swagger.
+    args: [ 'package', '-DskipTests', '-Dquarkus.package.jar.type=uber-jar', '-Dquarkus.profile=staging' ]
 
   # 2. Build da imagem Docker
   - name: 'gcr.io/cloud-builders/docker'
@@ -55,7 +58,7 @@ steps:
       - '--timeout=${_TIMEOUT}'
       - '--port=8080'
       - '--no-allow-unauthenticated'
-      - '--set-env-vars=QUARKUS_PROFILE=prod,LOG_LEVEL=${_LOG_LEVEL},LOG_JSON=true,GCP_LOGGING_ENABLED=true'
+      - '--set-env-vars=QUARKUS_PROFILE=staging,LOG_LEVEL=${_LOG_LEVEL},LOG_JSON=true,GCP_LOGGING_ENABLED=true'
       - '--set-secrets=DATABASE_URL=gpt-db-host:latest,DATABASE_USER=gpt-db-user:latest,DATABASE_PASSWORD=gpt-db-password:latest'
 
 images:
