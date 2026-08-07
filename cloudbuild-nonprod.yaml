@@ -72,7 +72,12 @@ substitutions:
   _REGION: 'southamerica-east1'
   _MEMORY: '512Mi'
   _CPU: '1'
-  _MIN_INSTANCES: '0'
+  # min-instances=1 (era 0): evita cold start, que fazia a 1a chamada
+  # depois de ficar ocioso falhar com "Acquisition timeout" no /health
+  # (o handshake do Cloud SQL Connector demora mais que o timeout do
+  # pool na 1a conexão de um container novo). Vira requisito de verdade
+  # com a IA de RAG consumindo essa API - não pode falhar na 1a chamada.
+  _MIN_INSTANCES: '1'
   _MAX_INSTANCES: '3'
   _CONCURRENCY: '80'
   _TIMEOUT: '60s'
