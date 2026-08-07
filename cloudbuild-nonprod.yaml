@@ -1,4 +1,4 @@
-# Cloud Build - pharma-hub - NONPROD (branch: dev)
+# Cloud Build - pharma-hub - NONPROD (branch: develop)
 #
 # Secrets usados (Secret Manager - projeto rmfarma-dev):
 #   pharmahub_db_url, pharmahub_db_user, pharmahub_db_password,
