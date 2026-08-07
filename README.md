@@ -86,6 +86,14 @@ gcloud config set project rmfarma-dev
 
 Sobe em **http://localhost:8080**. O perfil `dev` busca a URL/usuário/senha do banco direto do Secret Manager (secrets `gpt-db-host`, `gpt-db-user`, `gpt-db-password` em `rmfarma-dev`) — **não** usa `.env` nem `env.yaml`, esses arquivos na raiz não são lidos pela aplicação em nenhum perfil hoje.
 
+O banco (`hiperconversagpt`, projeto `rmfarma`) só libera IP do escritório na allowlist — a conexão usa o **Cloud SQL Connector** (IAM em vez de IP) via `postgres-socket-factory`. Funciona liso no jar empacotado; no `quarkus:dev` tem uma limitação conhecida, ver tabela abaixo.
+
+> ⚠️ **`quarkus:dev` não conecta no banco de verdade** — dá `ClassNotFoundException` no Cloud SQL Connector (isolamento de classloader do modo hot-reload, investigado em 2026-08-07). Pra testar algo que toca o banco, empacote e rode o jar direto:
+> ```bash
+> ./mvnw package -DskipTests -Dquarkus.package.jar.type=uber-jar
+> QUARKUS_PROFILE=prod DATABASE_URL="$(gcloud secrets versions access latest --secret=gpt-db-host --project=rmfarma-dev)" DATABASE_USER="$(gcloud secrets versions access latest --secret=gpt-db-user --project=rmfarma-dev)" DATABASE_PASSWORD="$(gcloud secrets versions access latest --secret=gpt-db-password --project=rmfarma-dev)" java -jar target/*-runner.jar
+> ```
+
 > 🔑 API Keys de teste (hardcoded em dev): `d572765238d508028f78d576f0597ccabe0a78958a4ebc02` · `test-api-key-456`
 
 <details>
@@ -98,6 +106,7 @@ Sobe em **http://localhost:8080**. O perfil `dev` busca a URL/usuário/senha do 
 | `PERMISSION_DENIED` ao ler secret | Pedir `roles/secretmanager.secretAccessor` em `rmfarma-dev` ao time de infra |
 | `Header X-API-Key é obrigatório` | Esperado — adicione `-H "X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02"` |
 | `QueryNotFoundException` | `GET /queries` lista as keys válidas |
+| `SocketFactory ... could not be instantiated` (só no `quarkus:dev`) | Limitação conhecida de classloader — teste via jar empacotado (comando acima) |
 
 </details>
 
