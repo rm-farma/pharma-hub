@@ -6,7 +6,6 @@ import org.eclipse.microprofile.openapi.annotations.enums.SecuritySchemeType;
 import org.eclipse.microprofile.openapi.annotations.info.Contact;
 import org.eclipse.microprofile.openapi.annotations.info.Info;
 import org.eclipse.microprofile.openapi.annotations.security.SecurityScheme;
-import org.eclipse.microprofile.openapi.annotations.servers.Server;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import jakarta.ws.rs.core.Application;
@@ -63,9 +62,11 @@ import jakarta.ws.rs.core.Application;
             email = "plataforma@rmfarma.com.br"
         )
     ),
-    servers = {
-        @Server(url = "http://localhost:8080", description = "Desenvolvimento local")
-    },
+    // Sem "servers" fixo de propósito: sem essa lista, o Swagger UI usa a
+    // própria origem de onde a página foi carregada (localhost em dev,
+    // a URL real em qualquer Cloud Run) em vez de um host hardcoded.
+    // Já foi "http://localhost:8080" fixo e quebrava o "Try it out" em
+    // qualquer ambiente implantado (CORS/Failed to fetch) - 2026-08-07.
     tags = {
         @Tag(name = "Health",               description = "Verificação de saúde da aplicação."),
         @Tag(name = "Catálogo de Queries",  description = "Listagem e detalhes das queries disponíveis."),
