@@ -93,6 +93,7 @@ O banco (`hiperconversagpt`, projeto `rmfarma`) só libera IP do escritório na 
 > ./mvnw package -DskipTests -Dquarkus.package.jar.type=uber-jar
 > QUARKUS_PROFILE=prod DATABASE_URL="$(gcloud secrets versions access latest --secret=gpt-db-host --project=rmfarma-dev)" DATABASE_USER="$(gcloud secrets versions access latest --secret=gpt-db-user --project=rmfarma-dev)" DATABASE_PASSWORD="$(gcloud secrets versions access latest --secret=gpt-db-password --project=rmfarma-dev)" java -jar target/*-runner.jar
 > ```
+> Se também quiser o Swagger UI nesse teste manual, troque `prod` por `staging` nas duas ocorrências acima **e** adicione `-Dquarkus.profile=staging` no comando de `package` — Swagger é decidido em build-time, `QUARKUS_PROFILE` sozinho em runtime não é suficiente.
 
 > 🔑 API Keys de teste (hardcoded em dev): `d572765238d508028f78d576f0597ccabe0a78958a4ebc02` · `test-api-key-456`
 
@@ -149,10 +150,12 @@ Ou pelo **Swagger UI** (`/q/swagger-ui`) — clique "Authorize" e cole a API Key
 
 ## 🌿 GitFlow
 
-| Branch | Ambiente | Pipeline |
-|---|---|---|
-| `main` | Produção (`rmfarma`) | `cloudbuild-prod.yaml` |
-| `develop` | Nonprod (`rmfarma-dev`) | `cloudbuild-nonprod.yaml` |
+| Branch | Ambiente (GCP) | Perfil Quarkus | Pipeline |
+|---|---|---|---|
+| `main` | Produção (`rmfarma`) | `prod` (Swagger desligado) | `cloudbuild-prod.yaml` |
+| `develop` | Nonprod (`rmfarma-dev`) | `staging` (Swagger ligado) | `cloudbuild-nonprod.yaml` |
+
+> Projeto GCP e perfil Quarkus são coisas diferentes — `staging` existe só pra poder testar via Swagger no ambiente nonprod sem abrir mão da segurança do `prod` de verdade. Ver [`application-staging.properties`](src/main/resources/application-staging.properties).
 
 ```mermaid
 gitGraph
@@ -189,8 +192,8 @@ Commits seguem [Conventional Commits](https://www.conventionalcommits.org/): `ti
 
 ```mermaid
 flowchart LR
-    D(["push → develop"]) --> CBD["cloudbuild-nonprod.yaml"] --> RD["Cloud Run\nrmfarma-dev"]
-    M(["push → main"]) --> CBM["cloudbuild-prod.yaml"] --> RM["Cloud Run\nrmfarma"]
+    D(["push → develop"]) --> CBD["cloudbuild-nonprod.yaml\n(perfil staging)"] --> RD["Cloud Run rmfarma-dev\nSwagger em /q/swagger-ui"]
+    M(["push → main"]) --> CBM["cloudbuild-prod.yaml\n(perfil prod)"] --> RM["Cloud Run rmfarma\nSwagger desligado"]
 ```
 
 - **GitHub Actions** (`.github/workflows/ci.yml`): `./mvnw verify` em push/PR pra `main`. Só valida, não deploya.
