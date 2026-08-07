@@ -33,7 +33,7 @@ import jakarta.ws.rs.core.Application;
                 ```
                 X-API-Key: sua-chave-aqui
                 ```
-                Em ambiente de desenvolvimento, use: `dev-api-key-123`
+                Em ambiente de desenvolvimento, use: `d572765238d508028f78d576f0597ccabe0a78958a4ebc02`
 
                 ## Modos de execução
 
@@ -77,7 +77,7 @@ import jakarta.ws.rs.core.Application;
     type = SecuritySchemeType.APIKEY,
     apiKeyName = "X-API-Key",
     in = SecuritySchemeIn.HEADER,
-    description = "Chave de API enviada no header `X-API-Key`. Em desenvolvimento, use `dev-api-key-123`."
+    description = "Chave de API enviada no header `X-API-Key`. Em desenvolvimento, use `d572765238d508028f78d576f0597ccabe0a78958a4ebc02`."
 )
 public class OpenApiConfig extends Application {
 }

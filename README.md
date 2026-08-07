@@ -86,7 +86,7 @@ gcloud config set project rmfarma-dev
 
 Sobe em **http://localhost:8080**. O perfil `dev` busca a URL/usuário/senha do banco direto do Secret Manager (secrets `gpt-db-host`, `gpt-db-user`, `gpt-db-password` em `rmfarma-dev`) — **não** usa `.env` nem `env.yaml`, esses arquivos na raiz não são lidos pela aplicação em nenhum perfil hoje.
 
-> 🔑 API Keys de teste (hardcoded em dev): `dev-api-key-123` · `test-api-key-456`
+> 🔑 API Keys de teste (hardcoded em dev): `d572765238d508028f78d576f0597ccabe0a78958a4ebc02` · `test-api-key-456`
 
 <details>
 <summary><b>🩹 Erros comuns</b></summary>
@@ -96,7 +96,7 @@ Sobe em **http://localhost:8080**. O perfil `dev` busca a URL/usuário/senha do 
 |---|---|
 | `UNAUTHENTICATED: Failed computing credential metadata` | `gcloud auth application-default login` |
 | `PERMISSION_DENIED` ao ler secret | Pedir `roles/secretmanager.secretAccessor` em `rmfarma-dev` ao time de infra |
-| `Header X-API-Key é obrigatório` | Esperado — adicione `-H "X-API-Key: dev-api-key-123"` |
+| `Header X-API-Key é obrigatório` | Esperado — adicione `-H "X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02"` |
 | `QueryNotFoundException` | `GET /queries` lista as keys válidas |
 
 </details>
@@ -114,18 +114,18 @@ Sobe em **http://localhost:8080**. O perfil `dev` busca a URL/usuário/senha do 
 
 | Perfil | Origem do banco | API Keys |
 |---|---|---|
-| `dev` (local) | Secret Manager `rmfarma-dev`: `gpt-db-host`, `gpt-db-user`, `gpt-db-password` | Hardcoded: `dev-api-key-123`, `test-api-key-456` |
+| `dev` (local) | Secret Manager `rmfarma-dev`: `gpt-db-host`, `gpt-db-user`, `gpt-db-password` | Hardcoded: `d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456` |
 | `prod` (Cloud Run) | Secret Manager `rmfarma`: `gpt-db-host`, `gpt-db-user`, `gpt-db-password` (banco compartilhado com dev) | Mesmas hardcoded acima — **⚠️ ver nota abaixo** |
 
-> ⚠️ As chaves `pharma-app`/`admin-dashboard` foram removidas em 2026-08-07 por não terem cliente real associado. Sem chaves específicas de prod, a API em produção passa a aceitar as **mesmas chaves hardcoded do dev** (`dev-api-key-123`, `test-api-key-456`) — elas estão públicas no código-fonte. Se o pharma-hub for exposto pra clientes reais, é preciso definir chaves de produção antes disso (ver [Pontos de atenção](#-pontos-de-atenção-conhecidos)).
+> ⚠️ As chaves `pharma-app`/`admin-dashboard` foram removidas em 2026-08-07 por não terem cliente real associado. Sem chaves específicas de prod, a API em produção passa a aceitar as **mesmas chaves hardcoded do dev** (`d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456`) — elas estão públicas no código-fonte. Se o pharma-hub for exposto pra clientes reais, é preciso definir chaves de produção antes disso (ver [Pontos de atenção](#-pontos-de-atenção-conhecidos)).
 
 ## 🧪 Testando a API
 
 ```bash
 curl http://localhost:8080/health                                          # sem auth
-curl -H "X-API-Key: dev-api-key-123" http://localhost:8080/queries         # catálogo
+curl -H "X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02" http://localhost:8080/queries         # catálogo
 curl -X POST http://localhost:8080/queries/sales-summary/execute \
-  -H "X-API-Key: dev-api-key-123" -H "Content-Type: application/json" \
+  -H "X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02" -H "Content-Type: application/json" \
   -d '{"params":{"cnpj":"12345678000100","startDate":"2024-01-01","endDate":"2024-02-01"}}'
 ```
 
@@ -220,7 +220,7 @@ Auditoria completa em [`.planning/codebase/CONCERNS.md`](.planning/codebase/CONC
 - 🔴 **Zero testes** em `src/test/java/`.
 - 🔴 Comparação de API Key vulnerável a timing attack (`ApiKeyFilter.java:60`).
 - 🟠 Mensagens de erro vazam detalhes internos ao cliente.
-- 🟡 **Chave de API única e fixa, compartilhada entre dev e prod** (`dev-api-key-123`) — decisão consciente por enquanto (2026-08-07), não um esquecimento. Mitigado pelo `--no-allow-unauthenticated` do Cloud Run (já exige IAM do Google antes de chegar na aplicação). **TODO futuro:** implementar API Keys por cliente via Secret Manager antes de abrir a API pra consumidores externos reais.
+- 🟡 **Chave de API única e fixa, compartilhada entre dev e prod** (`d572765238d508028f78d576f0597ccabe0a78958a4ebc02`) — decisão consciente por enquanto (2026-08-07), não um esquecimento. Mitigado pelo `--no-allow-unauthenticated` do Cloud Run (já exige IAM do Google antes de chegar na aplicação). **TODO futuro:** implementar API Keys por cliente via Secret Manager antes de abrir a API pra consumidores externos reais.
 - 🟡 `env.yaml` foi removido do controle de versão (2026-08-07), mas já esteve commitado com credenciais em 2 commits antigos — a senha do banco ainda não foi trocada.
 
 ## 🔗 Links úteis

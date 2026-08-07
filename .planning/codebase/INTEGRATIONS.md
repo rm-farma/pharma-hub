@@ -63,7 +63,7 @@
   - Implementation: X-API-Key header validation in request interceptors/filters
   - API keys stored in configuration: `queryhub.security.api-keys.*` properties
   - Keys (hardcoded in `application.properties` line 23-24, apply to every profile including prod — não há chaves específicas de prod hoje):
-    - `dev-client`: `dev-api-key-123`
+    - `dev-client`: chave compartilhada dev+prod (ver `application.properties`, não hardcoded neste doc)
     - `test-client`: `test-api-key-456`
   - ⚠️ `pharma-app`/`admin-dashboard` (Secret Manager) foram removidos em 2026-08-07 por não terem cliente real associado — ver histórico do git se precisar reintroduzir
   - Configuration class: `src/main/java/com/rmfarma/pharmahub/infrastructure/config/ApiKeyConfig.java`

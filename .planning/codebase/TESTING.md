@@ -144,7 +144,7 @@ public class QueryExecutionResourceTest {
     @Test
     void testExecuteQuerySuccess() {
         given()
-            .header("X-API-Key", "dev-api-key-123")
+            .header("X-API-Key", "d572765238d508028f78d576f0597ccabe0a78958a4ebc02")
             .body("{\"params\": {\"cnpj\": \"06297687000236\"}, \"page\": 1, \"pageSize\": 10}")
             .contentType("application/json")
         .when()
@@ -357,7 +357,7 @@ void testInvalidApiKey() {
 @Test
 void testPagedResponseStructure() {
     given()
-        .header("X-API-Key", "dev-api-key-123")
+        .header("X-API-Key", "d572765238d508028f78d576f0597ccabe0a78958a4ebc02")
         .body("""
             {
               "params": {"cnpj": "06297687000236"},
@@ -385,7 +385,7 @@ void testPagedResponseStructure() {
 @Test
 void testUnpagedResponseStructure() {
     given()
-        .header("X-API-Key", "dev-api-key-123")
+        .header("X-API-Key", "d572765238d508028f78d576f0597ccabe0a78958a4ebc02")
         .body("""
             {
               "params": {"cnpj": "06297687000236"},
