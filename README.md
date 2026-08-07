@@ -141,6 +141,43 @@ curl -X POST http://localhost:8080/queries/sales-summary/execute \
 
 Ou pelo **Swagger UI** (`/q/swagger-ui`) — clique "Authorize" e cole a API Key uma vez.
 
+## 🌍 Ambientes implantados
+
+Pra times externos consumindo a API — a mesma chave vale nos dois ambientes ([ver secrets](#-variáveis-de-ambiente-e-secrets)):
+
+| Ambiente | URL | Swagger |
+|---|---|---|
+| 🧪 **Dev** (`rmfarma-dev`) | [`pharma-hub-172688433868.southamerica-east1.run.app`](https://pharma-hub-172688433868.southamerica-east1.run.app) | ✅ [`/q/swagger-ui`](https://pharma-hub-172688433868.southamerica-east1.run.app/q/swagger-ui/) |
+| 🔒 **Prod** (`rmfarma`) | [`pharma-hub-575503576839.southamerica-east1.run.app`](https://pharma-hub-575503576839.southamerica-east1.run.app) | ❌ desligado por segurança |
+
+> Sem Swagger disponível em prod? Use a documentação do Dev como referência dos endpoints e troque só a URL base na hora de chamar de verdade.
+
+<details>
+<summary><b>💬 Mensagem pronta pra avisar outros times (Teams/Slack)</b></summary>
+<br>
+
+```
+🔌 Pharma Hub API — Como consumir
+
+Autenticação: toda chamada (exceto /health) exige o header abaixo.
+A mesma chave vale para os dois ambientes:
+
+X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02
+
+🧪 Dev
+https://pharma-hub-172688433868.southamerica-east1.run.app
+Documentação interativa (Swagger): /q/swagger-ui
+
+🔒 Prod
+https://pharma-hub-575503576839.southamerica-east1.run.app
+⚠️ Swagger desativado aqui por segurança — usem a doc do Dev
+como referência dos endpoints.
+
+Qualquer dúvida, me chamem.
+```
+
+</details>
+
 ## 📦 Build
 
 ```bash
