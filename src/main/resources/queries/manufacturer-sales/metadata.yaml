@@ -1,0 +1,32 @@
+key: manufacturer-sales
+version: "1.0.0"
+description: "Vendas agrupadas por produto de um determinado fabricante no período — consome a table function get_manufacturer_sales_by_period do BigQuery"
+endpoint: "/queries/manufacturer-sales/execute"
+tags:
+  - vendas
+  - fabricante
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: manufacturerPattern
+    type: STRING
+    required: true
+    description: "Padrão de busca do fabricante, usa LIKE (ex: %EMS%). Não diferencia maiúsculas de minúsculas."
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+pagination:
+  defaultPageSize: 20
+  maxPageSize: 100
+  allowUnpaged: true
+  maxUnpagedRows: 1000
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.ManufacturerSalesDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.ManufacturerSalesMapper"
