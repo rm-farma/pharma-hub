@@ -9,14 +9,12 @@
   - What it's used for: Secure credential management and injection into application configuration
   - SDK/Client: `quarkus-google-cloud-secret-manager` (Quarkus integration)
   - Auth: gcloud CLI (`gcloud auth application-default login`) for dev environment
-  - Reference syntax: `${sm//secret-name}` in properties files (e.g., `${sm//gpt-db-host}` in `application-dev.properties` line 17)
-  - Secrets managed (prod):
-    - `pharmahub_db_url` - Database connection URL
-    - `pharmahub_db_user` - Database username
-    - `pharmahub_db_password` - Database password
+  - Reference syntax: `${sm//secret-name}` in properties files (currently unused after the DB secrets were removed in the BigQuery migration; kept available for future secrets)
+  - Secrets previously managed (prod, removed once the API Key clients were retired on 2026-08-07):
     - `pharmahub_api_key_pharma_app` - API key for pharma app client
     - `pharmahub_api_key_admin_dashboard` - API key for admin dashboard client
-  - Configuration: `application-dev.properties` line 12 sets GCP project ID (`rmfarma-dev`)
+  - Database secrets (`gpt-db-*`) no longer apply — BigQuery access is IAM-based, not credential-based (see Data Storage below)
+  - Configuration: `application-dev.properties` sets GCP project ID (`rmfarma-dev`) — this is also the BigQuery job-execution/billing project, not the data project
 
 **GCP Cloud Logging (Stackdriver):**
 - Service: Google Cloud Logging
@@ -30,20 +28,15 @@
 ## Data Storage
 
 **Databases:**
-- **PostgreSQL** (primary)
-  - Type: Relational database
-  - Connection: JDBC via Agroal connection pool
-  - Connection string environment variable:
-    - Dev: Resolved from GCP Secret Manager as `${sm//gpt-db-host}`
-    - Prod: Injected via Cloud Build as `DATABASE_URL` environment variable
-  - Client library: `quarkus-jdbc-postgresql`
-  - Host (dev): `104.198.194.196:5432`
-  - Database name (dev): `base_de_conhecimento`
-  - Connection pool configuration:
-    - Dev: min=1, max=5 connections (`application-dev.properties` lines 20-21)
-    - Prod: min=2, max=10 connections (`application-prod.properties` lines 14-15)
-  - Query definitions: SQL files in `src/main/resources/queries/*/` directory with YAML metadata
-  - Mapper classes: `src/main/java/com/rmfarma/pharmahub/infrastructure/mapper/queries/` - Result set mapping for specific queries (e.g., `TopSellerMapper.java`, `SalesSummaryMapper.java`)
+- **BigQuery** (primary — replaced PostgreSQL on 2026-08-24)
+  - Type: Analytical data warehouse, consumed via pre-built **table functions** (not raw tables)
+  - Data project: `rm-farma-dw-prod`, dataset `licenciado` — this is a **different GCP project** than the one the app itself runs in (`rmfarma`/`rmfarma-dev`, set via `quarkus.google.cloud.project-id`)
+  - Cross-project access: the app's identity (local ADC in dev, Cloud Run service account in prod) needs `roles/bigquery.dataViewer` on the `licenciado` dataset in `rm-farma-dw-prod`, plus `roles/bigquery.jobUser` in its own project (`rmfarma`/`rmfarma-dev`) to submit query jobs. **This IAM grant is a deployment prerequisite that must be confirmed/applied outside this repo.**
+  - Client library: `io.quarkiverse.googlecloudservices:quarkus-google-cloud-bigquery` (resolved 2.18.0)
+  - No connection pooling — each query submits a `QueryJobConfiguration` job via the injected `BigQuery` client
+  - Query definitions: each `query.sql` in `src/main/resources/queries/*/` is now a single call to a table function (e.g. `` SELECT * FROM `rm-farma-dw-prod.licenciado.get_sales_overview`(@cnpj, @startDate, @endDate) ``), owned and maintained by the data team — this app no longer owns the business-logic SQL
+  - Mapper classes: `src/main/java/com/rmfarma/pharmahub/infrastructure/mapper/queries/` - maps `FieldValueList` rows to DTOs (e.g., `TopSellerMapper.java`, `SalesSummaryMapper.java`)
+  - Previously: PostgreSQL (`hiperconversagpt`, project `rmfarma`) via JDBC/Agroal, itself an ETL replica of BigQuery data (tables prefixed `bq_`) — removed entirely, no dual-engine transition period
 
 **File Storage:**
 - Local filesystem only
@@ -53,7 +46,7 @@
 
 **Caching:**
 - None implemented
-  - Queries execute directly against PostgreSQL without caching layer
+  - Queries execute directly against BigQuery without caching layer — each paginated request runs a COUNT job plus a data job, so there is no caching of the total-row count either (real BigQuery bytes-scanned cost on every page)
   - Application is stateless, suitable for auto-scaling in Cloud Run
 
 ## Authentication & Identity
@@ -102,9 +95,9 @@
 - Quarkus SmallRye Health framework
   - Endpoint: `/q/health` (Quarkus management endpoint, separate from `/health` custom endpoint)
   - Custom implementation: `src/main/java/com/rmfarma/pharmahub/api/resource/HealthResource.java`
-    - Tests database connectivity with `SELECT 1` query
-    - Returns `{"status": "UP", "database": "connected"}` or error response
-  - No authentication required (configured in `HealthResource.java` line 33)
+    - Tests BigQuery connectivity by fetching the `licenciado` dataset metadata in `rm-farma-dw-prod`
+    - Returns `{"status": "UP", "bigquery": "connected"}` or error response
+  - No authentication required
 
 ## CI/CD & Deployment
 
@@ -145,23 +138,15 @@
 
 **Secret Management:**
 - Google Cloud Secret Manager integration
-  - Secrets injected via Cloud Build `--set-secrets` flag (references Secret Manager secret versions)
-  - Environment-specific secret names:
-    - Prod: `pharmahub_db_url`, `pharmahub_db_user`, `pharmahub_db_password`, `pharmahub_api_key_pharma_app`, `pharmahub_api_key_admin_dashboard`
-    - Nonprod: `gpt_db_host`, `gpt_db_user`, `gpt_db_password`
-  - No hardcoded secrets in code or Cloud Build YAML
+  - No database secrets to inject anymore — BigQuery access is IAM-based (ADC / Cloud Run service account), not credential-based like the old JDBC connection
+  - `queryhub.security.api-keys.*` (API Keys) are currently hardcoded in `application.properties`, not sourced from Secret Manager at runtime — see `CONCERNS.md`
 
 ## Environment Configuration
 
 **Required env vars:**
 
 **Development (local):**
-- Configured via GCP Secret Manager (automatic injection)
-- Local reference file: `env.yaml` (git-ignored, not committed)
-  - `DB_URL`: JDBC connection string
-  - `DB_NAME`: Database name
-  - `DB_USERNAME`: Database username
-  - `DB_PASSWORD`: Database password
+- BigQuery + Secret Manager access via Application Default Credentials (`gcloud auth application-default login`) — no database connection env vars needed anymore
   - `LOG_LEVEL`: Logging level (DEBUG/INFO/WARN)
   - `LOG_JSON`: JSON logging flag (false for dev, true for prod)
   - `GCP_LOGGING_ENABLED`: Cloud Logging integration flag
@@ -172,17 +157,12 @@
   - `LOG_LEVEL=${_LOG_LEVEL}` - Set to `INFO` in prod
   - `LOG_JSON=true` - Enable JSON logging
   - `GCP_LOGGING_ENABLED=true` - Enable Cloud Logging
-- Injected as secrets from Secret Manager:
-  - `DATABASE_URL` - JDBC connection string
-  - `DATABASE_USER` - Database username
-  - `DATABASE_PASSWORD` - Database password
-  - `API_KEY_PHARMA_APP` - API key for pharma app
-  - `API_KEY_ADMIN_DASHBOARD` - API key for admin dashboard
+- BigQuery access via the Cloud Run service account's IAM roles (`bigquery.dataViewer` on `rm-farma-dw-prod.licenciado`, `bigquery.jobUser` on `rmfarma`) — no secret injection needed
 
-**Secrets location:**
-- Google Cloud Secret Manager (GCP project `rmfarma` for prod, `rmfarma-dev` for dev)
-- Access model: Cloud Build service account has permission to retrieve secrets during deployment
-- Local dev: Automatic via `gcloud auth application-default login` (personal GCP credentials)
+**IAM prerequisites (BigQuery, cross-project):**
+- Dev identity (personal ADC) and the Cloud Run prod service account both need, on project `rm-farma-dw-prod`: `roles/bigquery.dataViewer` scoped to the `licenciado` dataset.
+- Both also need `roles/bigquery.jobUser` on their own project (`rmfarma-dev` for dev, `rmfarma` for prod) to submit query jobs.
+- **Status:** pending confirmation/application outside this repo as of the 2026-08-24 migration.
 
 ## Webhooks & Callbacks
 
@@ -191,7 +171,7 @@
 
 **Outgoing:**
 - None - Application does not send webhooks or callbacks to external systems
-- Queries execute against PostgreSQL only, no downstream API calls
+- Queries execute against BigQuery only (table functions), no downstream API calls
 
 ## API Endpoints
 
@@ -214,7 +194,7 @@
   - `GET /health` - Application health check (custom endpoint)
     - Location: `src/main/java/com/rmfarma/pharmahub/api/resource/HealthResource.java`
     - Authentication: **Not required**
-    - Tests database connectivity
+    - Tests BigQuery connectivity
 
 **Management Endpoints (Quarkus built-in):**
 - `/q/health` - Quarkus health check

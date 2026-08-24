@@ -23,10 +23,10 @@ pharma-hub/
 │   │   │   │   │       ├── UnpagedResponse.java
 │   │   │   │   │       ├── QueryInfoResponse.java
 │   │   │   │   │       ├── ErrorResponse.java
-│   │   │   │   │       └── queries/           # Query-specific DTOs (11 types)
+│   │   │   │   │       └── queries/           # Query-specific DTOs (15 types)
 │   │   │   │   │           ├── SalesSummaryDTO.java
 │   │   │   │   │           ├── TopProductDTO.java
-│   │   │   │   │           └── ... (9 more)
+│   │   │   │   │           └── ... (13 more)
 │   │   │   │   ├── filter/
 │   │   │   │   │   └── ApiKeyFilter.java     # X-API-Key authentication
 │   │   │   │   └── exception/
@@ -61,16 +61,17 @@ pharma-hub/
 │   │   │       │   └── QueryHubConfig.java   # Loads pagination/timeout settings
 │   │   │       ├── query/
 │   │   │       │   └── FileSystemQueryRepository.java  # Loads YAML + SQL
-│   │   │       ├── db/
-│   │   │       │   ├── JdbcQueryExecutor.java
-│   │   │       │   └── NamedParamResolver.java
+│   │   │       ├── bigquery/
+│   │   │       │   ├── BigQueryQueryExecutor.java
+│   │   │       │   └── BigQueryParamResolver.java
 │   │   │       └── mapper/
-│   │   │           ├── ResultSetMapper.java  # Interface: ResultSet → T
-│   │   │           ├── GenericMapMapper.java # Default: ResultSet → Map
-│   │   │           └── queries/              # Query-specific mappers (11)
+│   │   │           ├── RowMapper.java        # Interface: FieldValueList → T
+│   │   │           ├── BigQueryValues.java   # Null-safe FieldValueList column extraction
+│   │   │           ├── GenericMapMapper.java # Default: row → Map (positional keys)
+│   │   │           └── queries/              # Query-specific mappers (15)
 │   │   │               ├── SalesSummaryMapper.java
 │   │   │               ├── TopProductMapper.java
-│   │   │               └── ... (9 more)
+│   │   │               └── ... (13 more)
 │   │   │
 │   │   ├── resources/
 │   │   │   ├── application.properties        # Base config (all profiles)
@@ -110,7 +111,16 @@ pharma-hub/
 │   │   │       ├── stock-without-sales/
 │   │   │       │   ├── metadata.yaml
 │   │   │       │   └── query.sql
-│   │   │       └── idle-stock/
+│   │   │       ├── items-sold-below-cost/    # New (BigQuery migration)
+│   │   │       │   ├── metadata.yaml
+│   │   │       │   └── query.sql
+│   │   │       ├── manufacturer-sales/       # New (BigQuery migration)
+│   │   │       │   ├── metadata.yaml
+│   │   │       │   └── query.sql
+│   │   │       ├── products-loss/            # New (BigQuery migration)
+│   │   │       │   ├── metadata.yaml
+│   │   │       │   └── query.sql
+│   │   │       └── top-products-by-category/ # New (BigQuery migration)
 │   │   │           ├── metadata.yaml
 │   │   │           └── query.sql
 │   │   │
@@ -164,7 +174,7 @@ pharma-hub/
 **`src/main/java/com/rmfarma/pharmahub/core/model/`**
 - Purpose: Domain entities and value objects
 - Contains: QueryDefinition, ParamDefinition, ParamType (enum), ExecutionMode (enum), Result wrappers
-- Patterns: Records for immutability, enums for strategies (ParamType has convert/bind methods)
+- Patterns: Records for immutability, enums for strategies (ParamType has convert/toQueryParameterValue methods)
 
 **`src/main/java/com/rmfarma/pharmahub/core/port/`**
 - Purpose: Abstractions (interfaces) that drive infrastructure decisions
@@ -172,8 +182,8 @@ pharma-hub/
 - Patterns: Port-Adapter pattern — interfaces here, implementations in infrastructure/
 
 **`src/main/java/com/rmfarma/pharmahub/infrastructure/`**
-- Purpose: Technical implementations (database, I/O, configuration)
-- Contains: Repository impl, JDBC executor, mappers, config loaders
+- Purpose: Technical implementations (BigQuery access, I/O, configuration)
+- Contains: Repository impl, BigQuery executor, mappers, config loaders
 - Patterns: Adapters realizing core ports; @ApplicationScoped singletons
 
 **`src/main/java/com/rmfarma/pharmahub/infrastructure/query/`**
@@ -181,14 +191,14 @@ pharma-hub/
 - Contains: FileSystemQueryRepository — scans classpath for queries/*/metadata.yaml + query.sql
 - Patterns: @PostConstruct init loads all queries once; queries cached in memory
 
-**`src/main/java/com/rmfarma/pharmahub/infrastructure/db/`**
-- Purpose: Database access and SQL execution
-- Contains: JdbcQueryExecutor (pagination, parameter binding), NamedParamResolver (SQL rewriting)
-- Patterns: Direct JDBC (no ORM), PreparedStatements for safety, Agroal connection pool
+**`src/main/java/com/rmfarma/pharmahub/infrastructure/bigquery/`**
+- Purpose: BigQuery access — each `query.sql` is now a single table-function call
+- Contains: BigQueryQueryExecutor (pagination, job submission), BigQueryParamResolver (`@param` → `QueryParameterValue` bindings)
+- Patterns: Injected `BigQuery` client (Quarkiverse extension), no connection pooling — each call is a submitted job
 
 **`src/main/java/com/rmfarma/pharmahub/infrastructure/mapper/`**
-- Purpose: Map SQL ResultSet rows to domain objects (DTOs or generic Maps)
-- Contains: Interface ResultSetMapper, GenericMapMapper (default), 11 query-specific mappers
+- Purpose: Map BigQuery `FieldValueList` rows to domain objects (DTOs or generic Maps)
+- Contains: Interface RowMapper, BigQueryValues (null-safe column extraction helpers), GenericMapMapper (default, positional keys), 15 query-specific mappers
 - Patterns: Strategy pattern — executor looks up mapper by @Named annotation; fallback to generic
 
 **`src/main/resources/`**
@@ -198,8 +208,8 @@ pharma-hub/
 
 **`src/main/resources/queries/*/`**
 - Purpose: Each directory contains one query's definition
-- Structure: metadata.yaml (parameters, pagination, dto/mapper class names) + query.sql (template with :param placeholders)
-- Count: 11 queries (sales-summary, top-sellers, top-products, stock-search, stock-metrics, sales-overview, sales-comparison, idle-stock, abc-curve-summary, abc-curve-products, stock-without-sales)
+- Structure: metadata.yaml (parameters, pagination, dto/mapper class names) + query.sql (a single BigQuery table-function call, template with `@param` placeholders)
+- Count: 15 queries (sales-summary, top-sellers, top-products, stock-search, stock-metrics, sales-overview, sales-comparison, idle-stock, abc-curve-summary, abc-curve-products, stock-without-sales, items-sold-below-cost, manufacturer-sales, products-loss, top-products-by-category)
 
 **`src/main/docker/`**
 - Purpose: Container build configurations (Docker images)
@@ -215,29 +225,29 @@ pharma-hub/
 - `src/main/java/com/rmfarma/pharmahub/api/OpenApiConfig.java`: OpenAPI spec + Swagger UI config
 
 **Configuration:**
-- `src/main/resources/application.properties`: Base config (port, datasource type, pagination defaults)
-- `src/main/resources/application-dev.properties`: Development overrides
-- `src/main/resources/application-prod.properties`: Production overrides (uses env vars from Secret Manager)
+- `src/main/resources/application.properties`: Base config (port, pagination defaults)
+- `src/main/resources/application-dev.properties`: Development overrides (GCP project-id for BigQuery jobs/Secret Manager)
+- `src/main/resources/application-prod.properties`: Production overrides
 - `src/main/java/com/rmfarma/pharmahub/infrastructure/config/ApiKeyConfig.java`: Loads API keys
 - `src/main/java/com/rmfarma/pharmahub/infrastructure/config/QueryHubConfig.java`: Loads pagination/timeout settings
 
 **Core Logic:**
 - `src/main/java/com/rmfarma/pharmahub/application/ExecuteQueryUseCase.java`: Query execution orchestration
 - `src/main/java/com/rmfarma/pharmahub/infrastructure/query/FileSystemQueryRepository.java`: Query loading
-- `src/main/java/com/rmfarma/pharmahub/infrastructure/db/JdbcQueryExecutor.java`: SQL execution with pagination
-- `src/main/java/com/rmfarma/pharmahub/infrastructure/db/NamedParamResolver.java`: Named parameter resolution
+- `src/main/java/com/rmfarma/pharmahub/infrastructure/bigquery/BigQueryQueryExecutor.java`: Table-function execution with pagination
+- `src/main/java/com/rmfarma/pharmahub/infrastructure/bigquery/BigQueryParamResolver.java`: Named parameter resolution (`@param`)
 
 **Testing:**
 - `src/test/java/com/rmfarma/pharmahub/`: Test classes (currently none; ready for expansion)
 
 **Query Definitions:**
 - `src/main/resources/queries/{query-key}/metadata.yaml`: Query parameters, pagination, DTO/mapper class names
-- `src/main/resources/queries/{query-key}/query.sql`: SQL template with :param placeholders
+- `src/main/resources/queries/{query-key}/query.sql`: Single BigQuery table-function call, template with `@param` placeholders
 
 ## Naming Conventions
 
 **Files:**
-- **Classes:** PascalCase (e.g., QueryExecutionResource, JdbcQueryExecutor)
+- **Classes:** PascalCase (e.g., QueryExecutionResource, BigQueryQueryExecutor)
 - **Test classes:** {ClassName}Test (e.g., ExecuteQueryUseCaseTest)
 - **Configuration files:** application.properties, application-{profile}.properties
 - **Query directories:** kebab-case (e.g., sales-summary, abc-curve-products)
@@ -248,14 +258,14 @@ pharma-hub/
 - **Source code:** camelCase (main, java, resources, test)
 - **Package names:** lowercase, reverse domain notation (com.rmfarma.pharmahub)
 - **Layer packages:** api, application, core, infrastructure (singular nouns)
-- **Sub-packages:** Descriptive plural or singular (resource, dto, filter, model, port, query, db, mapper, config)
+- **Sub-packages:** Descriptive plural or singular (resource, dto, filter, model, port, query, bigquery, mapper, config)
 - **Query directories:** kebab-case (sales-summary, top-sellers)
 
 **Classes:**
 - **Resources:** {Entity}Resource (e.g., QueryExecutionResource, QueryCatalogResource)
 - **Use Cases:** {Action}UseCase (e.g., ExecuteQueryUseCase, ListQueriesUseCase)
 - **Repository:** {Entity}Repository (e.g., QueryRepository — interface; FileSystemQueryRepository — impl)
-- **Executor:** {Task}Executor (e.g., QueryExecutor, JdbcQueryExecutor)
+- **Executor:** {Task}Executor (e.g., QueryExecutor, BigQueryQueryExecutor)
 - **Mapper:** {Type}Mapper (e.g., SalesSummaryMapper — specific; GenericMapMapper — fallback)
 - **Config:** {Domain}Config (e.g., ApiKeyConfig, QueryHubConfig)
 - **Exception:** {Scenario}Exception (e.g., QueryNotFoundException, ParamValidationException)

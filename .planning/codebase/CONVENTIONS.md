@@ -8,7 +8,7 @@
 - PascalCase with descriptive names: `QueryExecutionResource`, `ExecuteQueryUseCase`, `TopSellerMapper`
 - REST resources end with `Resource`: `QueryExecutionResource`, `QueryCatalogResource`, `HealthResource`
 - Use cases end with `UseCase`: `ExecuteQueryUseCase`, `ListQueriesUseCase`, `GetQueryDetailsUseCase`
-- Mappers end with `Mapper`: `TopSellerMapper`, `ResultSetMapper`, `GenericMapMapper`
+- Mappers end with `Mapper`: `TopSellerMapper`, `RowMapper`, `GenericMapMapper`
 - Exception classes end with `Exception`: `QueryNotFoundException`, `ParamValidationException`
 - Configuration classes end with `Config`: `ApiKeyConfig`, `QueryHubConfig`
 
@@ -23,7 +23,7 @@
 
 **Records/Records:**
 - Use record keyword for immutable DTOs: `ExecuteRequest`, `PagedResponse<T>`, `ErrorResponse`
-- Generic type parameters in angle brackets: `PagedResponse<T>`, `ResultSetMapper<T>`
+- Generic type parameters in angle brackets: `PagedResponse<T>`, `RowMapper<T>`
 
 ## Code Style
 
@@ -157,16 +157,18 @@ private static final Logger LOG = Logger.getLogger(ClassName.class);
 **Examples from Codebase:**
 ```java
 /**
- * Detecta LIMIT no final do SQL (hardcoded ou com named param :limit).
+ * Detecta LIMIT no final do SQL (hardcoded ou com named param @limit).
  * Ignora LIMIT dentro de subqueries — só faz match no LIMIT mais externo no final do SQL.
  */
 private static final Pattern TRAILING_LIMIT_PATTERN = ...
 
-// Se o SQL já tem LIMIT (hardcoded ou :limit param), não adicionar outro
+// Se o SQL já tem LIMIT (hardcoded ou @limit param), não adicionar outro
 if (!hasTrailingLimit(sql)) {
     sql = sql + "\nLIMIT " + (maxRows + 1);
 }
 ```
+
+**Note (2026-08-24 BigQuery migration):** named parameters in `query.sql` templates changed syntax from JDBC-style `:param` to BigQuery-style `@param` — this is a hard requirement of the BigQuery client API, not a style choice.
 
 **Language:** Portuguese (pt-BR) for comments and documentation
 

@@ -2,13 +2,16 @@
 
 **Analysis Date:** 2026-08-06
 
+> **Update (2026-08-24):** the data-access layer was rewritten — Postgres/JDBC was fully removed and replaced by a BigQuery executor consuming table functions (`infrastructure/bigquery/BigQueryQueryExecutor.java`). References to `infrastructure/db/JdbcQueryExecutor.java` below have moved; concerns that still apply were updated in place, still-open ones are unchanged. No tests were added as part of that migration (explicit decision, still tracked as the top concern below).
+
 ## Test Coverage Gaps
 
 **Complete Absence of Tests:**
-- What's not tested: All business logic, API endpoints, database interactions, and error scenarios
+- What's not tested: All business logic, API endpoints, BigQuery interactions, and error scenarios
 - Files: All source code in `src/main/java/com/rmfarma/pharmahub/` — test directory at `src/test/java/` is empty
 - Risk: Critical issues can reach production undetected. Refactoring is extremely risky. No regression protection for bug fixes.
 - Priority: **HIGH**
+- Note: the BigQuery migration (2026-08-24) is a good candidate for the first tests — the `BigQuery` client from the SDK is a plain interface and can be mocked without an emulator, making `BigQueryQueryExecutor`/`BigQueryParamResolver` straightforward to unit-test.
 
 **Impact:** Impossible to safely refactor, add features, or debug issues. Query execution logic, parameter validation, pagination, and exception handling have zero safety net.
 
@@ -21,10 +24,10 @@
 - Recommendations: Use constant-time comparison (e.g., `MessageDigest.isEqual()` or a crypto library)
 
 **Exception Messages Leak Sensitive Data:**
-- Risk: Database error messages exposed to clients
+- Risk: BigQuery/internal error messages exposed to clients
 - Files: 
-  - `src/main/java/com/rmfarma/pharmahub/api/exception/GlobalExceptionMapper.java:42` — exposes `exception.getMessage()` in 500 responses
-  - `src/main/java/com/rmfarma/pharmahub/api/resource/HealthResource.java:83` — leaks database connection error details
+  - `src/main/java/com/rmfarma/pharmahub/api/exception/GlobalExceptionMapper.java` — exposes `exception.getMessage()` in 500 responses
+  - `src/main/java/com/rmfarma/pharmahub/api/resource/HealthResource.java` — leaks BigQuery connection error details
 - Current mitigation: None
 - Recommendations: Log full errors server-side, return generic messages to clients (e.g., "Internal server error" without exception details)
 
@@ -48,15 +51,15 @@
 - Cause: Linear iteration through `apiKeyConfig.apiKeys().entrySet()` on every request
 - Improvement path: Convert to HashMap-based lookup in `ApiKeyConfig`. Build a reverse map (`key → clientId`) at initialization and use O(1) lookup.
 
-**COUNT Query Wraps Entire Result Set:**
-- Problem: Very slow pagination counting for large datasets
-- Files: `src/main/java/com/rmfarma/pharmahub/infrastructure/db/JdbcQueryExecutor.java:99`
-- Cause: `SELECT COUNT(*) FROM (original_query) AS count_query` approach requires full query execution
+**COUNT Query Wraps Entire Result Set (now a BigQuery cost concern, not just latency):**
+- Problem: Every paginated request runs the table-function call **twice** — once wrapped in `SELECT COUNT(*) FROM (...)`, once with `LIMIT/OFFSET` for the page. Both run as separate BigQuery jobs, so this doubles bytes-scanned cost per paginated request, not just latency.
+- Files: `src/main/java/com/rmfarma/pharmahub/infrastructure/bigquery/BigQueryQueryExecutor.java` (`executeCount`)
+- Cause: `SELECT COUNT(*) FROM (original_query) AS count_query` approach requires a full second execution of the table function
 - Improvement path: Consider alternatives:
-  - Add database indexes on frequently sorted/filtered columns
-  - Use approximate row counts from `pg_stat_user_tables` (PostgreSQL)
+  - Cache the COUNT for a short TTL per (query key, params) combination
+  - Offer a "no total count" pagination mode for high-traffic queries where the exact total isn't needed
+  - Use BigQuery's `dryRun` query stats to estimate bytes/rows before committing to a full COUNT
   - Implement cursor-based pagination instead of offset-based
-  - Cache result counts for predictable queries
 
 ## Fragile Areas
 
@@ -67,15 +70,15 @@
 - Test coverage: MISSING
 
 **Generic Exception Wrapping Hides Root Causes:**
-- Files: `src/main/java/com/rmfarma/pharmahub/infrastructure/db/JdbcQueryExecutor.java:115-117, 142-144`
-- Why fragile: Converts all `SQLException` to generic `RuntimeException`, losing specific error context
-- Safe modification: Create custom exceptions for different failure scenarios (e.g., `QueryTimeoutException`, `ConnectionPoolExhaustedException`)
+- Files: `src/main/java/com/rmfarma/pharmahub/infrastructure/bigquery/BigQueryQueryExecutor.java` (`runJob`)
+- Why fragile: Converts all BigQuery `RuntimeException`/`InterruptedException` failures to a generic `RuntimeException`, losing specific error context (e.g., quota exceeded, permission denied, malformed table-function call)
+- Safe modification: Create custom exceptions for different failure scenarios (e.g., `QueryTimeoutException`, `BigQueryPermissionDeniedException`) by inspecting `BigQueryException.getReason()`
 - Test coverage: MISSING
 
 **No Explicit Timeout Exception Handling:**
-- Files: `src/main/java/com/rmfarma/pharmahub/infrastructure/db/JdbcQueryExecutor.java:105,132` — sets timeout but no specific handling
-- Why fragile: SQLTimeoutException is wrapped as generic RuntimeException, making it hard to distinguish timeout from other failures
-- Safe modification: Catch `SQLTimeoutException` separately and throw custom exception with client-friendly message
+- Files: `src/main/java/com/rmfarma/pharmahub/infrastructure/bigquery/BigQueryQueryExecutor.java` (`runJob`) — sets `setJobTimeoutMs` but no specific handling of a timed-out job
+- Why fragile: A BigQuery job timeout surfaces as a generic exception, making it hard to distinguish timeout from other failures (permissions, malformed SQL, etc.)
+- Safe modification: Inspect the job's error result / `BigQueryException` reason and throw a custom exception with a client-friendly message
 
 **Query Execution Assumes SQL Validity:**
 - Files: All `.sql` files in `src/main/resources/queries/*/query.sql`
