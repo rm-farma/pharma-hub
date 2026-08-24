@@ -1,6 +1,6 @@
 key: abc-curve-products
-version: "1.0.0"
-description: "Detalhamento de produtos na curva ABC com classe, faturamento, estoque e preços"
+version: "2.0.0"
+description: "Detalhamento de produtos na curva ABC com classe, faturamento, estoque e preços — consome a table function get_abc_curve_products do BigQuery"
 endpoint: "/queries/abc-curve-products/execute"
 tags:
   - curva-abc
@@ -22,7 +22,7 @@ params:
   - name: classeAbc
     type: STRING
     required: false
-    description: "Filtro por classe ABC (A, B ou C)"
+    description: "Filtro por classe ABC (A, B ou C). Omitir para trazer todas as classes."
 pagination:
   defaultPageSize: 50
   maxPageSize: 200
@@ -31,4 +31,3 @@ pagination:
 timeoutMs: 60000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.AbcCurveProductDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.AbcCurveProductMapper"
-

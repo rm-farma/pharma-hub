@@ -10,10 +10,10 @@ public record IdleStockDTO(
         BigDecimal saldoEstoque,
         BigDecimal custoMedioTotal,
         BigDecimal precoVenda,
-        String totalSkus,
-        String totalUnidades,
-        String valorTotalCusto,
-        String valorTotalVenda
+        Long totalSkus,
+        BigDecimal totalUnidades,
+        BigDecimal valorTotalCusto,
+        BigDecimal valorTotalVenda
 ) {
 }
 

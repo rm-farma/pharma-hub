@@ -1,6 +1,6 @@
 key: sales-overview
-version: "1.0.0"
-description: "Visão geral de vendas (total faturado, CMV e total de pedidos)"
+version: "2.0.0"
+description: "Visão geral de vendas (total faturado, CMV e total de pedidos) — consome a table function get_sales_overview do BigQuery"
 endpoint: "/queries/sales-overview/execute"
 tags:
   - vendas
@@ -26,4 +26,3 @@ pagination:
 timeoutMs: 30000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.SalesOverviewDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.SalesOverviewMapper"
-

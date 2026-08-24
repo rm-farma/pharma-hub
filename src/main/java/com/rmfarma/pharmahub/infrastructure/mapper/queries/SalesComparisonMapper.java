@@ -1,32 +1,30 @@
 package com.rmfarma.pharmahub.infrastructure.mapper.queries;
 
+import com.google.cloud.bigquery.FieldValueList;
 import com.rmfarma.pharmahub.api.dto.response.queries.SalesComparisonDTO;
-import com.rmfarma.pharmahub.infrastructure.mapper.ResultSetMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.BigQueryValues;
+import com.rmfarma.pharmahub.infrastructure.mapper.RowMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
 @ApplicationScoped
 @Named("sales-comparison")
-public class SalesComparisonMapper implements ResultSetMapper<SalesComparisonDTO> {
+public class SalesComparisonMapper implements RowMapper<SalesComparisonDTO> {
 
     @Override
-    public SalesComparisonDTO map(ResultSet rs) throws SQLException {
+    public SalesComparisonDTO map(FieldValueList row) {
         return new SalesComparisonDTO(
-                rs.getString("periodo_base"),
-                rs.getString("periodo_comparado"),
-                rs.getBigDecimal("faturamento_base"),
-                rs.getBigDecimal("faturamento_comparado"),
-                rs.getBigDecimal("variacao_faturamento"),
-                rs.getBigDecimal("itens_vendidos_base"),
-                rs.getBigDecimal("itens_vendidos_comparado"),
-                rs.getBigDecimal("variacao_itens_vendidos"),
-                rs.getBigDecimal("ticket_medio_base"),
-                rs.getBigDecimal("ticket_medio_comparado"),
-                rs.getBigDecimal("variacao_ticket_medio")
+                BigQueryValues.string(row, "periodoBase"),
+                BigQueryValues.string(row, "periodoComparado"),
+                BigQueryValues.numeric(row, "faturamentoBase"),
+                BigQueryValues.numeric(row, "faturamentoComparado"),
+                BigQueryValues.numeric(row, "variacaoFaturamento"),
+                BigQueryValues.numeric(row, "itensVendidosBase"),
+                BigQueryValues.numeric(row, "itensVendidosComparado"),
+                BigQueryValues.numeric(row, "variacaoItensVendidos"),
+                BigQueryValues.numeric(row, "ticketMedioBase"),
+                BigQueryValues.numeric(row, "ticketMedioComparado"),
+                BigQueryValues.numeric(row, "variacaoTicketMedio")
         );
     }
 }
-

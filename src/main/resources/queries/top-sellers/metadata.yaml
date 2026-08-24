@@ -1,6 +1,6 @@
 key: top-sellers
-version: "1.0.0"
-description: "Top vendedores por faturamento no período"
+version: "2.0.0"
+description: "Top vendedores por faturamento no período — consome a table function get_top_sellers_by_period do BigQuery"
 endpoint: "/queries/top-sellers/execute"
 tags:
   - vendas
@@ -19,11 +19,6 @@ params:
     type: DATE
     required: true
     description: "Data fim do período"
-  - name: limit
-    type: INTEGER
-    required: false
-    description: "Quantidade máxima de vendedores retornados"
-    defaultValue: "5"
 pagination:
   defaultPageSize: 10
   maxPageSize: 50
@@ -32,4 +27,3 @@ pagination:
 timeoutMs: 30000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.TopSellerDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.TopSellerMapper"
-

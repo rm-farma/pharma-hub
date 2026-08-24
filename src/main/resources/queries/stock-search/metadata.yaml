@@ -1,6 +1,6 @@
 key: stock-search
-version: "1.0.0"
-description: "Busca de produtos no estoque por EAN ou nome (ILIKE)"
+version: "2.0.0"
+description: "Busca de produtos no estoque por EAN ou nome — consome a table function get_stock_by_search do BigQuery"
 endpoint: "/queries/stock-search/execute"
 tags:
   - estoque
@@ -13,7 +13,7 @@ params:
   - name: searchTerm
     type: STRING
     required: true
-    description: "Termo de busca (enviar com % para ILIKE, ex: %dipirona%)"
+    description: "Termo de busca (enviar com % para LIKE, ex: %dipirona%)"
 pagination:
   defaultPageSize: 20
   maxPageSize: 100
@@ -22,4 +22,3 @@ pagination:
 timeoutMs: 30000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.StockSearchDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.StockSearchMapper"
-

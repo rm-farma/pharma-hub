@@ -1,23 +1,21 @@
 package com.rmfarma.pharmahub.infrastructure.mapper.queries;
 
+import com.google.cloud.bigquery.FieldValueList;
 import com.rmfarma.pharmahub.api.dto.response.queries.SalesSummaryDTO;
-import com.rmfarma.pharmahub.infrastructure.mapper.ResultSetMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.BigQueryValues;
+import com.rmfarma.pharmahub.infrastructure.mapper.RowMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
 @ApplicationScoped
 @Named("sales-summary")
-public class SalesSummaryMapper implements ResultSetMapper<SalesSummaryDTO> {
+public class SalesSummaryMapper implements RowMapper<SalesSummaryDTO> {
 
     @Override
-    public SalesSummaryDTO map(ResultSet rs) throws SQLException {
+    public SalesSummaryDTO map(FieldValueList row) {
         return new SalesSummaryDTO(
-                rs.getBigDecimal("total_amount"),
-                rs.getLong("total_orders")
+                BigQueryValues.numeric(row, "totalAmount"),
+                BigQueryValues.longValue(row, "totalOrders")
         );
     }
 }
-

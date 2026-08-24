@@ -1,6 +1,6 @@
 key: sales-comparison
-version: "1.0.0"
-description: "Comparativo de vendas entre dois períodos (faturamento, itens vendidos, ticket médio com variação %)"
+version: "2.0.0"
+description: "Comparativo de vendas entre dois períodos (faturamento, itens vendidos, ticket médio com variação %) — consome a table function compare_sales_periods do BigQuery"
 endpoint: "/queries/sales-comparison/execute"
 tags:
   - vendas
@@ -12,19 +12,19 @@ params:
     required: true
     description: "CNPJ da loja"
   - name: startDate1
-    type: STRING
+    type: DATE
     required: true
     description: "Data início do período base"
   - name: endDate1
-    type: STRING
+    type: DATE
     required: true
     description: "Data fim do período base"
   - name: startDate2
-    type: STRING
+    type: DATE
     required: true
     description: "Data início do período comparado"
   - name: endDate2
-    type: STRING
+    type: DATE
     required: true
     description: "Data fim do período comparado"
 pagination:
@@ -35,4 +35,3 @@ pagination:
 timeoutMs: 60000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.SalesComparisonDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.SalesComparisonMapper"
-
