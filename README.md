@@ -193,7 +193,7 @@ Qualquer dúvida, me chamem.
 
 ```mermaid
 gitGraph
-    commit id: "v1.0.0" tag: "v1.0.0"
+    commit id: "init"
     branch develop
     checkout develop
     commit id: "feature A"
@@ -204,21 +204,23 @@ gitGraph
     commit id: "feature C"
 ```
 
-Branches de apoio saem de `develop` (`feature/*`, `release/*`) ou de `main` (`hotfix/*`) e voltam pra lá via PR. `main` só recebe merge de `release/*` ou `hotfix/*`, sempre com tag (`vX.Y.Z`).
+**GitFlow simplificado, sem `release/*`.** Decisão de 2026-08-25: como é uma API com deploy contínuo (não um produto com lançamentos versionados), a branch `release/*` foi removida do fluxo — ela só adicionava um passo extra sem benefício real aqui, e chegou a causar `main`/`develop` divergirem numa sessão anterior.
 
-O repo já tem a extensão [git-flow](https://github.com/nvie/gitflow) inicializada (`git flow init`). Fluxo recomendado — o PR no GitHub faz o merge de verdade, `git flow finish` só sincroniza local e limpa a branch:
+- `feature/nome-da-feature` sai de `develop`, volta via PR pra `develop`.
+- `hotfix/*` sai de `main`, pra correção urgente que não pode esperar `develop` passar por `main`, volta via PR.
+- Quando `develop` estiver pronto para ir pra produção, PR direto de `develop` pra `main`.
+- Tags (`vX.Y.Z`), se usadas, são criadas direto no commit de merge em `main` — sem precisar de uma branch dedicada.
 
 ```bash
-git flow feature start nome-da-feature
+git checkout -b feature/nome-da-feature develop
 # commits, push, PR no GitHub: feature/nome-da-feature -> develop
-# depois do merge do PR:
-git flow feature finish nome-da-feature
 
-git flow release start 1.1.0     # a partir de develop
-git flow hotfix start bug-x      # a partir de main
+# quando develop estiver pronto pra ir pra produção:
+# PR no GitHub: develop -> main
+
+git checkout -b hotfix/nome-do-bug main
+# commits, push, PR no GitHub: hotfix/nome-do-bug -> main
 ```
-
-Sem a extensão instalada, o equivalente é `git checkout -b feature/nome-da-feature` a partir de `develop` — mesmo resultado.
 
 Commits seguem [Conventional Commits](https://www.conventionalcommits.org/): `tipo(escopo): descrição` (`feat`, `fix`, `docs`, `refactor`, `chore`, `test`).
 
