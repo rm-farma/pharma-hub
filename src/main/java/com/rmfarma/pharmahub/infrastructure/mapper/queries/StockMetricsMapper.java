@@ -1,25 +1,23 @@
 package com.rmfarma.pharmahub.infrastructure.mapper.queries;
 
+import com.google.cloud.bigquery.FieldValueList;
 import com.rmfarma.pharmahub.api.dto.response.queries.StockMetricsDTO;
-import com.rmfarma.pharmahub.infrastructure.mapper.ResultSetMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.BigQueryValues;
+import com.rmfarma.pharmahub.infrastructure.mapper.RowMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
 @ApplicationScoped
 @Named("stock-metrics")
-public class StockMetricsMapper implements ResultSetMapper<StockMetricsDTO> {
+public class StockMetricsMapper implements RowMapper<StockMetricsDTO> {
 
     @Override
-    public StockMetricsDTO map(ResultSet rs) throws SQLException {
+    public StockMetricsDTO map(FieldValueList row) {
         return new StockMetricsDTO(
-                rs.getString("cnpj"),
-                rs.getString("grupo_economico"),
-                rs.getBigDecimal("total_custo_estoque"),
-                rs.getLong("total_itens_alta_rotatividade")
+                BigQueryValues.string(row, "cnpj"),
+                BigQueryValues.string(row, "grupo_economico"),
+                BigQueryValues.numeric(row, "total_custo_estoque"),
+                BigQueryValues.numeric(row, "total_itens_alta_rotatividade")
         );
     }
 }
-

@@ -39,11 +39,11 @@
   - Swagger UI: `/q/swagger-ui` (dev only, disabled in prod via `application-prod.properties`)
   - Configuration: `application-dev.properties` lines 43-62
 
-**Database & Persistence:**
-- Agroal (Quarkus connection pool) - JDBC connection pooling
-  - Dependency: `quarkus-agroal` in `pom.xml`
-  - Connection management: Configured in `application-dev.properties` lines 20-21 and `application-prod.properties` lines 14-15
-  - Pool sizes: dev (1-5 connections), prod (2-10 connections)
+**Data Access:**
+- Quarkus Google Cloud Services — BigQuery (`quarkus-google-cloud-bigquery`, resolved 2.18.0) - injects the `BigQuery` client used to run table-function queries as BigQuery jobs
+  - Dependency: `io.quarkiverse.googlecloudservices:quarkus-google-cloud-bigquery` in `pom.xml`
+  - No connection pooling concept (unlike JDBC/Agroal, which this replaced) — each query submits a job via `bigquery.query(QueryJobConfiguration)`
+  - Data project: `rm-farma-dw-prod`, dataset `licenciado` (cross-project relative to the app's own GCP project, `rmfarma`/`rmfarma-dev`)
 
 **Testing:**
 - JUnit 5 - Test runner
@@ -76,8 +76,7 @@
 - `quarkus-google-cloud-services-bom:io.quarkus.platform` 3.27.2 - Google Cloud integrations (Secret Manager, Logging)
 
 **Infrastructure:**
-- `quarkus-jdbc-postgresql` - PostgreSQL JDBC driver for database connectivity
-- `quarkus-agroal` - Connection pool management
+- `quarkus-google-cloud-bigquery` (Quarkiverse, resolved 2.18.0) - injects the `BigQuery` client used by `BigQueryQueryExecutor` to run table-function queries
 - `quarkus-google-cloud-secret-manager` - Integration with GCP Secret Manager for credential injection (dev environment)
 
 **Observability & Logging:**
@@ -102,15 +101,9 @@
   - Activated via `QUARKUS_PROFILE` environment variable (prod profile in Cloud Run)
   - Dev profile activates automatically with `./mvnw quarkus:dev`
 
-- Environment variables for secrets (prod only):
-  - `DATABASE_URL` - JDBC connection string
-  - `DATABASE_USER` - Database username
-  - `DATABASE_PASSWORD` - Database password
-  - Injected via Cloud Build `--set-secrets` from GCP Secret Manager
-
+- BigQuery access relies on Application Default Credentials / the Cloud Run service account (no JDBC secrets to inject anymore) — see `.planning/codebase/INTEGRATIONS.md` for the required IAM roles.
 - GCP Secret Manager (dev): Credentials fetched automatically via `gcloud auth application-default login`
   - Syntax: `${sm//secret-name}` for Secret Manager reference
-  - Used in `application-dev.properties` lines 17-19
 
 **Build:**
 - Maven build configuration: `pom.xml`
@@ -127,8 +120,8 @@
 **Development:**
 - Java 21 (Eclipse Temurin or compatible)
 - Maven 3.9+
-- gcloud CLI (for GCP Secret Manager authentication with `gcloud auth application-default login`)
-- PostgreSQL connectivity (remote host: `104.198.194.196:5432` for dev)
+- gcloud CLI (for GCP Secret Manager and BigQuery authentication with `gcloud auth application-default login`)
+- BigQuery access to project `rm-farma-dw-prod`, dataset `licenciado` (cross-project IAM — see INTEGRATIONS.md)
 
 **Production:**
 - Deployment target: Google Cloud Run (managed container service)

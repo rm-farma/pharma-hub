@@ -1,6 +1,6 @@
 key: sales-summary
-version: "1.0.0"
-description: "Resumo de vendas por período (total faturado e total de pedidos)"
+version: "2.0.0"
+description: "Resumo de vendas por período (total faturado e total de pedidos) — consome a table function get_sales_summary_by_period do BigQuery"
 endpoint: "/queries/sales-summary/execute"
 tags:
   - vendas
@@ -26,4 +26,3 @@ pagination:
 timeoutMs: 30000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.SalesSummaryDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.SalesSummaryMapper"
-

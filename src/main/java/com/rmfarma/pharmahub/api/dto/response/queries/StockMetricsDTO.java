@@ -6,7 +6,7 @@ public record StockMetricsDTO(
         String cnpj,
         String grupoEconomico,
         BigDecimal totalCustoEstoque,
-        Long totalItensAltaRotatividade
+        BigDecimal totalItensAltaRotatividade
 ) {
 }
 

@@ -22,7 +22,8 @@ public class FileSystemQueryRepository implements QueryRepository {
     private static final String[] QUERY_KEYS = {
             "sales-summary", "top-sellers", "top-products", "sales-comparison",
             "stock-without-sales", "stock-search", "stock-metrics",
-            "abc-curve-summary", "abc-curve-products", "sales-overview", "idle-stock"
+            "abc-curve-summary", "abc-curve-products", "sales-overview", "idle-stock",
+            "items-sold-below-cost", "manufacturer-sales", "products-loss", "top-products-by-category"
     };
 
     private final Map<String, QueryDefinition> queries = new LinkedHashMap<>();
