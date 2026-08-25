@@ -50,12 +50,16 @@ import jakarta.ws.rs.core.Application;
                 | `sales-comparison` | Comparativo de dois períodos com variação % |
                 | `top-sellers` | Ranking de vendedores por faturamento |
                 | `top-products` | Ranking de produtos por quantidade vendida |
+                | `top-products-by-category` | Ranking de produtos mais vendidos por categoria |
                 | `stock-search` | Busca de produto por EAN ou nome |
                 | `stock-metrics` | Métricas gerais do estoque |
                 | `stock-without-sales` | Produtos em estoque sem registro de venda |
                 | `idle-stock` | Estoque parado com custo e valor total |
                 | `abc-curve-summary` | Resumo da curva ABC por classe A/B/C |
                 | `abc-curve-products` | Detalhamento de produtos na curva ABC |
+                | `items-sold-below-cost` | Vendas individuais realizadas abaixo do custo |
+                | `manufacturer-sales` | Vendas agrupadas por produto de um fabricante |
+                | `products-loss` | Produtos com resultado negativo somando as vendas do período |
                 """,
         contact = @Contact(
             name = "Grupo Hiper Saude — Plataforma",

@@ -143,9 +143,11 @@ Pra times externos consumindo a API — a mesma chave vale nos dois ambientes ([
 | Ambiente | URL | Swagger |
 |---|---|---|
 | 🧪 **Dev** (`rmfarma-dev`) | [`pharma-hub-172688433868.southamerica-east1.run.app`](https://pharma-hub-172688433868.southamerica-east1.run.app) | ✅ [`/q/swagger-ui`](https://pharma-hub-172688433868.southamerica-east1.run.app/q/swagger-ui/) |
-| 🔒 **Prod** (`rmfarma`) | [`pharma-hub-575503576839.southamerica-east1.run.app`](https://pharma-hub-575503576839.southamerica-east1.run.app) | ❌ desligado por segurança |
+| 🔒 **Prod** (`rmfarma`) | [`pharma-hub-575503576839.southamerica-east1.run.app`](https://pharma-hub-575503576839.southamerica-east1.run.app) | ✅ [`/q/swagger-ui`](https://pharma-hub-575503576839.southamerica-east1.run.app/q/swagger-ui/) |
 
-> Sem Swagger disponível em prod? Use a documentação do Dev como referência dos endpoints e troque só a URL base na hora de chamar de verdade.
+> ⚠️ **Dev/nonprod não tem acesso a dados reais.** Por decisão deliberada (2026-08-25), só a service account de produção tem permissão no BigQuery real (`rm-farma-dw-prod`). Em Dev, `/health` e qualquer `/queries/{key}/execute` retornam `Access Denied` — use o Swagger de Dev só para consultar contrato/schema dos endpoints, e teste com dados de verdade direto em Prod.
+>
+> O Swagger de Prod está acessível porque o Cloud Run já exige IAM (`--no-allow-unauthenticated`) para alcançar o serviço — mesma proteção de rede que o Dev tem — e todas as queries são somente leitura (SELECT via table functions, sem nenhum caminho de escrita).
 
 <details>
 <summary><b>💬 Mensagem pronta pra avisar outros times (Teams/Slack)</b></summary>
@@ -162,11 +164,11 @@ X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02
 🧪 Dev
 https://pharma-hub-172688433868.southamerica-east1.run.app
 Documentação interativa (Swagger): /q/swagger-ui
+⚠️ Sem dados reais — só para consultar o contrato dos endpoints.
 
 🔒 Prod
 https://pharma-hub-575503576839.southamerica-east1.run.app
-⚠️ Swagger desativado aqui por segurança — usem a doc do Dev
-como referência dos endpoints.
+Documentação interativa (Swagger): /q/swagger-ui
 
 Qualquer dúvida, me chamem.
 ```
@@ -184,10 +186,10 @@ Qualquer dúvida, me chamem.
 
 | Branch | Ambiente (GCP) | Perfil Quarkus | Pipeline |
 |---|---|---|---|
-| `main` | Produção (`rmfarma`) | `prod` (Swagger desligado) | `cloudbuild-prod.yaml` |
-| `develop` | Nonprod (`rmfarma-dev`) | `nonprod` (Swagger ligado) | `cloudbuild-nonprod.yaml` |
+| `main` | Produção (`rmfarma`) | `prod` (Swagger ligado, acesso real ao BigQuery) | `cloudbuild-prod.yaml` |
+| `develop` | Nonprod (`rmfarma-dev`) | `nonprod` (Swagger ligado, **sem** acesso ao BigQuery real) | `cloudbuild-nonprod.yaml` |
 
-> Projeto GCP e perfil Quarkus são coisas diferentes, mas usam o mesmo nome de propósito — `nonprod` existe só pra poder testar via Swagger no ambiente nonprod sem abrir mão da segurança do `prod` de verdade. Ver [`application-nonprod.properties`](src/main/resources/application-nonprod.properties).
+> Projeto GCP e perfil Quarkus são coisas diferentes, mas usam o mesmo nome de propósito. Swagger fica ligado nos dois ambientes — a proteção de acesso é o IAM do Cloud Run (`--no-allow-unauthenticated`) em ambos, não a ausência do Swagger. A diferença real entre eles é o **dado**: só a service account de Prod tem permissão no dataset do BigQuery (`rm-farma-dw-prod`); Nonprod nunca recebe esse acesso, por decisão deliberada (ver [`INTEGRATIONS.md`](.planning/codebase/INTEGRATIONS.md#data-storage)). Ver [`application-nonprod.properties`](src/main/resources/application-nonprod.properties) e [`application-prod.properties`](src/main/resources/application-prod.properties).
 
 ```mermaid
 gitGraph
@@ -224,8 +226,8 @@ Commits seguem [Conventional Commits](https://www.conventionalcommits.org/): `ti
 
 ```mermaid
 flowchart LR
-    D(["push → develop"]) --> CBD["cloudbuild-nonprod.yaml\n(perfil nonprod)"] --> RD["Cloud Run rmfarma-dev\nSwagger em /q/swagger-ui"]
-    M(["push → main"]) --> CBM["cloudbuild-prod.yaml\n(perfil prod)"] --> RM["Cloud Run rmfarma\nSwagger desligado"]
+    D(["push → develop"]) --> CBD["cloudbuild-nonprod.yaml\n(perfil nonprod)"] --> RD["Cloud Run rmfarma-dev\nSwagger em /q/swagger-ui (sem BigQuery real)"]
+    M(["push → main"]) --> CBM["cloudbuild-prod.yaml\n(perfil prod)"] --> RM["Cloud Run rmfarma\nSwagger em /q/swagger-ui (com BigQuery real)"]
 ```
 
 - **GitHub Actions** (`.github/workflows/ci.yml`): `./mvnw verify` em push/PR pra `main`. Só valida, não deploya.

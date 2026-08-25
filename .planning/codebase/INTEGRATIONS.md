@@ -31,7 +31,7 @@
 - **BigQuery** (primary — replaced PostgreSQL on 2026-08-24)
   - Type: Analytical data warehouse, consumed via pre-built **table functions** (not raw tables)
   - Data project: `rm-farma-dw-prod`, dataset `licenciado` — this is a **different GCP project** than the one the app itself runs in (`rmfarma`/`rmfarma-dev`, set via `quarkus.google.cloud.project-id`)
-  - Cross-project access: the app's identity (local ADC in dev, Cloud Run service account in prod) needs `roles/bigquery.dataViewer` on the `licenciado` dataset in `rm-farma-dw-prod`, plus `roles/bigquery.jobUser` in its own project (`rmfarma`/`rmfarma-dev`) to submit query jobs. **This IAM grant is a deployment prerequisite that must be confirmed/applied outside this repo.**
+  - Cross-project access: **only the production Cloud Run service account (project `rmfarma`)** gets `roles/bigquery.dataViewer` on the `licenciado` dataset in `rm-farma-dw-prod`, plus `roles/bigquery.jobUser` in `rmfarma`. This is a deliberate security boundary decided 2026-08-25: dev/nonprod (local ADC and the Cloud Run nonprod service account in `rmfarma-dev`) intentionally has **no** access to real production data — see IAM prerequisites below.
   - Client library: `io.quarkiverse.googlecloudservices:quarkus-google-cloud-bigquery` (resolved 2.18.0)
   - No connection pooling — each query submits a `QueryJobConfiguration` job via the injected `BigQuery` client
   - Query definitions: each `query.sql` in `src/main/resources/queries/*/` is now a single call to a table function (e.g. `` SELECT * FROM `rm-farma-dw-prod.licenciado.get_sales_overview`(@cnpj, @startDate, @endDate) ``), owned and maintained by the data team — this app no longer owns the business-logic SQL
@@ -97,6 +97,7 @@
   - Custom implementation: `src/main/java/com/rmfarma/pharmahub/api/resource/HealthResource.java`
     - Tests BigQuery connectivity by fetching the `licenciado` dataset metadata in `rm-farma-dw-prod`
     - Returns `{"status": "UP", "bigquery": "connected"}` or error response
+    - **Expected to report `DOWN` in dev/nonprod** — those environments intentionally have no IAM access to the production BigQuery dataset (see IAM prerequisites below). A `DOWN` health check in nonprod is not a bug.
   - No authentication required
 
 ## CI/CD & Deployment
@@ -146,7 +147,8 @@
 **Required env vars:**
 
 **Development (local):**
-- BigQuery + Secret Manager access via Application Default Credentials (`gcloud auth application-default login`) — no database connection env vars needed anymore
+- Secret Manager access via Application Default Credentials (`gcloud auth application-default login`) — no database connection env vars needed anymore
+  - BigQuery calls will fail with `Access Denied` against `rm-farma-dw-prod` — deliberate, local dev has no grant on the production dataset (see IAM prerequisites below)
   - `LOG_LEVEL`: Logging level (DEBUG/INFO/WARN)
   - `LOG_JSON`: JSON logging flag (false for dev, true for prod)
   - `GCP_LOGGING_ENABLED`: Cloud Logging integration flag
@@ -160,9 +162,13 @@
 - BigQuery access via the Cloud Run service account's IAM roles (`bigquery.dataViewer` on `rm-farma-dw-prod.licenciado`, `bigquery.jobUser` on `rmfarma`) — no secret injection needed
 
 **IAM prerequisites (BigQuery, cross-project):**
-- Dev identity (personal ADC) and the Cloud Run prod service account both need, on project `rm-farma-dw-prod`: `roles/bigquery.dataViewer` scoped to the `licenciado` dataset.
-- Both also need `roles/bigquery.jobUser` on their own project (`rmfarma-dev` for dev, `rmfarma` for prod) to submit query jobs.
-- **Status:** pending confirmation/application outside this repo as of the 2026-08-24 migration.
+- **Only the production Cloud Run service account** (`575503576839-compute@developer.gserviceaccount.com`, default compute SA of project `rmfarma`) gets access to real production data:
+  - `roles/bigquery.dataViewer` (and, as it happens, `roles/bigquery.dataOwner`) on the `licenciado` dataset in `rm-farma-dw-prod` — confirmed already present via `bq show rm-farma-dw-prod:licenciado`.
+  - `roles/bigquery.jobUser` on its own project (`rmfarma`) to submit query jobs — confirmed already present (the SA also holds the broader `roles/owner` on `rmfarma`).
+  - **Status: already satisfied, verified 2026-08-25 — no IAM action needed for prod.**
+- **Deliberate decision (2026-08-25): dev/nonprod gets none of this.** Neither the Cloud Run nonprod service account (`rmfarma-dev`, default compute SA `172688433868-compute@developer.gserviceaccount.com`) nor a developer's personal ADC should be granted access to `rm-farma-dw-prod`. Reasoning: only the real production API should ever touch real production data — nonprod exists to validate the app boots and Swagger/contract shape, not to query live business data.
+  - Consequence: `/health` and every `/queries/*/execute` call will fail in dev/nonprod with `Access Denied` from BigQuery. This is expected, not a defect — do not "fix" it by granting the nonprod/dev identity access to `rm-farma-dw-prod`.
+  - There is currently no nonprod/staging BigQuery dataset to point dev/nonprod at instead. If dev/nonprod ever needs to exercise real query results, that requires either a dedicated staging dataset from the data team or a mocking strategy — not broader access to the production dataset.
 
 ## Webhooks & Callbacks
 

@@ -263,6 +263,72 @@ public class QueryExecutionResource {
                               "unpaged":  false
                             }
                             """
+                ),
+                @ExampleObject(
+                    name = "12 · items-sold-below-cost (paginado)",
+                    summary = "items-sold-below-cost — Vendas individuais realizadas abaixo do custo do produto. default=20, max pageSize=100.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01"
+                              },
+                              "page":     1,
+                              "pageSize": 20,
+                              "unpaged":  false
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "13 · manufacturer-sales (paginado)",
+                    summary = "manufacturer-sales — Vendas agrupadas por produto de um fabricante. manufacturerPattern usa LIKE (ex: %EMS%), não diferencia maiúsculas de minúsculas. default=20, max pageSize=100.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":                 "06297687000236",
+                                "manufacturerPattern":  "%EMS%",
+                                "startDate":            "2026-01-01",
+                                "endDate":              "2026-02-01"
+                              },
+                              "page":     1,
+                              "pageSize": 20,
+                              "unpaged":  false
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "14 · products-loss (paginado)",
+                    summary = "products-loss — Produtos com resultado negativo somando todas as vendas do período por EAN (diferente de items-sold-below-cost, que analisa cada venda individualmente). default=20, max pageSize=100.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "06297687000236",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01"
+                              },
+                              "page":     1,
+                              "pageSize": 20,
+                              "unpaged":  false
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "15 · top-products-by-category (paginado)",
+                    summary = "top-products-by-category — Ranking de produtos mais vendidos de uma categoria. categoria não diferencia maiúsculas de minúsculas. default=20, max pageSize=100.",
+                    value = """
+                            {
+                              "params": {
+                                "cnpj":      "06297687000236",
+                                "categoria": "MEDICAMENTOS",
+                                "startDate": "2026-01-01",
+                                "endDate":   "2026-02-01"
+                              },
+                              "page":     1,
+                              "pageSize": 20,
+                              "unpaged":  false
+                            }
+                            """
                 )
             }
         )
@@ -445,6 +511,31 @@ public class QueryExecutionResource {
                               ],
                               "durationMs": 310,
                               "requestId":  "a9b8c7d6-e5f4-3210-abcd-098765432100"
+                            }
+                            """
+                ),
+                @ExampleObject(
+                    name = "200 · PAGED — products-loss (produtos com prejuízo no período)",
+                    summary = "Resposta products-loss: soma de vendas por EAN no período, quando faturamento - custo < 0",
+                    value = """
+                            {
+                              "queryKey":   "products-loss",
+                              "mode":       "PAGED",
+                              "page":       1,
+                              "pageSize":   20,
+                              "totalItems": 14,
+                              "totalPages": 1,
+                              "items": [
+                                {
+                                  "ean":           "7896714200046",
+                                  "productName":   "DIPIRONA SODICA 500MG 20CPR",
+                                  "totalQuantity": 120,
+                                  "faturamento":   840.00,
+                                  "custo":         910.50
+                                }
+                              ],
+                              "durationMs": 51,
+                              "requestId":  "b1c2d3e4-f5a6-7890-bcde-f01234567890"
                             }
                             """
                 )
