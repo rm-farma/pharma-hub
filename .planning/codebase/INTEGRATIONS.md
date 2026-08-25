@@ -162,13 +162,13 @@
 - BigQuery access via the Cloud Run service account's IAM roles (`bigquery.dataViewer` on `rm-farma-dw-prod.licenciado`, `bigquery.jobUser` on `rmfarma`) — no secret injection needed
 
 **IAM prerequisites (BigQuery, cross-project):**
-- **Only the production Cloud Run service account** (default compute SA of project `rmfarma`) gets access to real production data:
-  - `roles/bigquery.dataViewer` on project `rm-farma-dw-prod`, scoped to the `licenciado` dataset.
-  - `roles/bigquery.jobUser` on its own project (`rmfarma`) to submit query jobs.
+- **Only the production Cloud Run service account** (`575503576839-compute@developer.gserviceaccount.com`, default compute SA of project `rmfarma`) gets access to real production data:
+  - `roles/bigquery.dataViewer` (and, as it happens, `roles/bigquery.dataOwner`) on the `licenciado` dataset in `rm-farma-dw-prod` — confirmed already present via `bq show rm-farma-dw-prod:licenciado`.
+  - `roles/bigquery.jobUser` on its own project (`rmfarma`) to submit query jobs — confirmed already present (the SA also holds the broader `roles/owner` on `rmfarma`).
+  - **Status: already satisfied, verified 2026-08-25 — no IAM action needed for prod.**
 - **Deliberate decision (2026-08-25): dev/nonprod gets none of this.** Neither the Cloud Run nonprod service account (`rmfarma-dev`, default compute SA `172688433868-compute@developer.gserviceaccount.com`) nor a developer's personal ADC should be granted access to `rm-farma-dw-prod`. Reasoning: only the real production API should ever touch real production data — nonprod exists to validate the app boots and Swagger/contract shape, not to query live business data.
   - Consequence: `/health` and every `/queries/*/execute` call will fail in dev/nonprod with `Access Denied` from BigQuery. This is expected, not a defect — do not "fix" it by granting the nonprod/dev identity access to `rm-farma-dw-prod`.
   - There is currently no nonprod/staging BigQuery dataset to point dev/nonprod at instead. If dev/nonprod ever needs to exercise real query results, that requires either a dedicated staging dataset from the data team or a mocking strategy — not broader access to the production dataset.
-- **Status (prod grant):** pending confirmation/application outside this repo as of the 2026-08-24 migration.
 
 ## Webhooks & Callbacks
 
