@@ -4,7 +4,9 @@
 
 ## System Overview
 
-Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a PostgreSQL database. It provides an abstraction layer over 11 predefined queries with support for pagination, typed parameters, and API key authentication.
+Pharma Hub is a REST API for invoking pre-approved analytics table functions published in BigQuery (project `rm-farma-dw-prod`, dataset `licenciado`). It provides an abstraction layer over 15 predefined queries with support for pagination, typed parameters, and API key authentication.
+
+> **Migration note (2026-08-24):** this project originally queried a PostgreSQL replica (`bq_licenciado_rel` schema, itself an ETL copy of BigQuery data) via JDBC. The data team has since published the same business logic as BigQuery table functions, which are now the source of truth. The Postgres/JDBC stack was removed entirely (not a dual-engine migration — the old stack never had a real consumer) and replaced by a `BigQueryQueryExecutor`. Diagrams and line references below reflect the current BigQuery-based architecture; some line numbers pre-date this migration and may have shifted.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -51,19 +53,21 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 ┌───────────▼──────────────────────────────────────────────────────┐
 │          Infrastructure Layer                                    │
 │  ┌──────────────────┬─────────────────┬──────────────────────┐  │
-│  │ FileSystem       │  JdbcQuery      │ Mappers & Config     │  │
+│  │ FileSystem       │  BigQueryQuery  │ Mappers & Config     │  │
 │  │ QueryRepository  │  Executor       │                      │  │
-│  │ (loads YAML      │ (PostgreSQL)    │ - Result mapping     │  │
+│  │ (loads YAML      │ (BigQuery)      │ - Result mapping     │  │
 │  │  + SQL from      │ - Parameter     │ - Query config       │  │
 │  │  classpath)      │   resolution    │ - API Key config     │  │
 │  │                  │ - Pagination    │                      │  │
 │  │                  │ - Named param   │                      │  │
 │  │                  │   binding       │                      │  │
-│  │ `query/`         │ `db/`           │ `mapper/`, `config/` │  │
+│  │ `query/`         │ `bigquery/`     │ `mapper/`, `config/` │  │
 │  └──────────────────┴─────────────────┴──────────────────────┘  │
 │                         ▼                                        │
-│                  PostgreSQL Database                             │
-│                  (bq_licenciado_rel schema)                      │
+│                  BigQuery (project rm-farma-dw-prod)             │
+│                  Table functions in the `licenciado` dataset,    │
+│                  invoked from a query job run in rmfarma/        │
+│                  rmfarma-dev (cross-project, IAM-gated)          │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -80,11 +84,12 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 | ListQueriesUseCase | Fetches all available queries from repository | `application/ListQueriesUseCase.java` |
 | GetQueryDetailsUseCase | Fetches single query definition by key | `application/GetQueryDetailsUseCase.java` |
 | FileSystemQueryRepository | Loads query metadata (YAML) and SQL from classpath | `infrastructure/query/FileSystemQueryRepository.java` |
-| JdbcQueryExecutor | Executes SQL with pagination support against PostgreSQL | `infrastructure/db/JdbcQueryExecutor.java` |
-| NamedParamResolver | Converts :param placeholder SQL to ? placeholders + type bindings | `infrastructure/db/NamedParamResolver.java` |
-| ResultSetMapper (interface) | Converts ResultSet to domain objects (DTO or Map) | `infrastructure/mapper/ResultSetMapper.java` |
-| GenericMapMapper | Default mapper: converts ResultSet rows to Map<String, Object> | `infrastructure/mapper/GenericMapMapper.java` |
-| Specific Mappers (11x) | Query-specific mappers (e.g., SalesSummaryMapper) | `infrastructure/mapper/queries/*.java` |
+| BigQueryQueryExecutor | Runs the table-function query as a BigQuery job, with pagination support | `infrastructure/bigquery/BigQueryQueryExecutor.java` |
+| BigQueryParamResolver | Converts @param placeholders in SQL into `QueryParameterValue` bindings | `infrastructure/bigquery/BigQueryParamResolver.java` |
+| RowMapper (interface) | Converts a BigQuery `FieldValueList` row to domain objects (DTO or Map) | `infrastructure/mapper/RowMapper.java` |
+| BigQueryValues | Null-safe column extraction helpers for `FieldValueList` (String/BigDecimal/Long/Boolean) | `infrastructure/mapper/BigQueryValues.java` |
+| GenericMapMapper | Default mapper: converts a row's positional fields to Map<String, Object> | `infrastructure/mapper/GenericMapMapper.java` |
+| Specific Mappers (15x) | Query-specific mappers (e.g., SalesSummaryMapper) | `infrastructure/mapper/queries/*.java` |
 
 ## Pattern Overview
 
@@ -122,10 +127,10 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 - Used by: All other layers
 
 **Infrastructure Layer (`infrastructure/`):**
-- Purpose: Technical implementations (database, mapping, configuration)
-- Location: `infrastructure/query/`, `infrastructure/db/`, `infrastructure/mapper/`, `infrastructure/config/`
-- Contains: Repository implementation, JDBC executor, ResultSet mappers, config classes
-- Depends on: Core ports, external libraries (Quarkus, JDBC, YAML)
+- Purpose: Technical implementations (BigQuery access, mapping, configuration)
+- Location: `infrastructure/query/`, `infrastructure/bigquery/`, `infrastructure/mapper/`, `infrastructure/config/`
+- Contains: Repository implementation, BigQuery executor, row mappers, config classes
+- Depends on: Core ports, external libraries (Quarkus, google-cloud-bigquery, YAML)
 - Used by: Application layer via ports
 
 ## Data Flow
@@ -146,21 +151,23 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
    - Validate and resolve parameters: `validateAndResolveParams()`
    - Determine execution mode: PAGED (default) or UNPAGED (if requested)
 
-4. **Query Execution** (`infrastructure/db/JdbcQueryExecutor.executePaged()` or `.executeUnpaged()`)
+4. **Query Execution** (`infrastructure/bigquery/BigQueryQueryExecutor.executePaged()` or `.executeUnpaged()`)
+   - The `sqlTemplate` is a single call to a BigQuery table function, e.g.
+     `` SELECT * FROM `rm-farma-dw-prod.licenciado.get_sales_overview`(@cnpj, @startDate, @endDate) ``
    - For PAGED:
-     - Execute COUNT query: `executeCount()` with subquery wrapping (line 62)
+     - Run a COUNT job: `executeCount()` wraps the table-function call in a subquery (same strategy as before, now costed in BigQuery bytes scanned)
      - Strip LIMIT from original SQL
-     - Append LIMIT/OFFSET for page
+     - Append LIMIT/OFFSET for page, run as a second BigQuery job
    - For UNPAGED:
      - Append LIMIT (maxRows + 1) to detect truncation
-   - Resolve named parameters: `NamedParamResolver.resolve()` converts :param to ?
-   - Bind parameters to PreparedStatement with type coercion
-   
+   - Resolve named parameters: `BigQueryParamResolver.resolve()` converts `@param` placeholders into `QueryParameterValue` bindings (via `ParamType.toQueryParameterValue()`)
+   - Submit as a `QueryJobConfiguration` via the injected `BigQuery` client; the job runs in the app's configured project (`rmfarma`/`rmfarma-dev`), reading cross-project from `rm-farma-dw-prod`
+
 5. **Result Mapping** (`infrastructure/mapper/*.java`)
    - Look up query-specific mapper by key (via @Named annotation)
    - If found: use specific mapper (e.g., SalesSummaryMapper)
-   - If not found: use GenericMapMapper (returns Map<String, Object>)
-   - Map each ResultSet row to domain object
+   - If not found: use GenericMapMapper (returns Map<String, Object> keyed by field position)
+   - Map each `FieldValueList` row to a domain object via `RowMapper<T>`, using `BigQueryValues` for null-safe column access
 
 6. **Response Building** (`api/resource/QueryExecutionResource.execute()` — line 556)
    - Wrap results in PagedResponse or UnpagedResponse
@@ -192,8 +199,8 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 
 **Health Check:**
 1. GET /health → HealthResource.health()
-2. Test database connectivity with SELECT 1
-3. Return {status: UP/DOWN, database: connected/disconnected}
+2. Test BigQuery connectivity by fetching the `licenciado` dataset metadata in `rm-farma-dw-prod`
+3. Return {status: UP/DOWN, bigquery: connected/disconnected}
 4. No authentication required
 
 **State Management:**
@@ -215,8 +222,8 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 - Pattern: Port & Adapter — repository interface defined in core, filesystem adapter in infrastructure
 
 **QueryExecutor:**
-- Purpose: Abstract SQL execution and pagination logic
-- Examples: `core/port/QueryExecutor.java` (interface), `infrastructure/db/JdbcQueryExecutor.java` (implementation)
+- Purpose: Abstract query execution and pagination logic
+- Examples: `core/port/QueryExecutor.java` (interface), `infrastructure/bigquery/BigQueryQueryExecutor.java` (sole implementation)
 - Pattern: Generic interface with type parameter <T> to support any result type
 
 **ExecutionResult:**
@@ -225,9 +232,9 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 - Pattern: Wrapper record carrying mode (PAGED/UNPAGED), result object, and query definition
 
 **ParamType:**
-- Purpose: Type system for query parameters with conversion and JDBC binding
+- Purpose: Type system for query parameters with conversion and BigQuery binding
 - Examples: `core/model/ParamType.java` (enum with 7 types: STRING, INTEGER, LONG, DECIMAL, BOOLEAN, DATE, TIMESTAMP)
-- Pattern: Strategy enum — each type knows how to convert strings and bind to PreparedStatement
+- Pattern: Strategy enum — each type knows how to convert strings (`convert()`) and build a `QueryParameterValue` (`toQueryParameterValue()`)
 
 ## Entry Points
 
@@ -254,9 +261,9 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 - Responsibilities: Fetch and return single query metadata
 
 **GET /health**
-- Location: `api/resource/HealthResource.health()` (line 68)
+- Location: `api/resource/HealthResource.health()`
 - Triggers: Client GET request (no auth required)
-- Responsibilities: Test database connectivity, return status
+- Responsibilities: Test BigQuery connectivity, return status
 
 **Initialization Entry Point:**
 
@@ -279,9 +286,9 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
   - Quarkus Arc scopes (@ApplicationScoped) — singleton per JVM
 - **Circular imports:** None detected (clean dependency graph: API → Application → Core ← Infrastructure)
 - **Query reloading:** NOT supported — queries are loaded once at startup, no runtime refresh
-- **Parameter safety:** Named parameters use PreparedStatement binding (SQL injection safe)
-- **Result streaming:** NOT used — all results loaded into memory (List<T>)
-- **Database connection pool:** Agroal (Quarkus datasource) manages connection pooling
+- **Parameter safety:** Named parameters use BigQuery `QueryParameterValue` binding (SQL injection safe)
+- **Result streaming:** NOT used — all results loaded into memory (List<T>) via `TableResult.iterateAll()`
+- **BigQuery client:** Injected `BigQuery` client (Quarkiverse `quarkus-google-cloud-bigquery` extension); no connection pooling concept — each query is a submitted job
 
 ## Anti-Patterns
 
@@ -297,33 +304,43 @@ Pharma Hub is a REST API for executing pre-approved SQL analytics queries on a P
 
 ### Manual SQL LIMIT/OFFSET Construction
 
-**What happens:** Pagination is implemented by string manipulation — stripTrailingLimit() + appending LIMIT/OFFSET (line 66)
+**What happens:** Pagination is implemented by string manipulation — stripTrailingLimit() + appending LIMIT/OFFSET, plus a separate COUNT job wrapping the table-function call in a subquery
 
-**Why it's wrong:** Error-prone for complex SQL (subqueries, CTEs); no database-agnostic abstraction
+**Why it's wrong:** Error-prone for complex SQL; each paginated request now runs as *two* BigQuery jobs (COUNT + data), doubling bytes-scanned cost compared to a single-job approach
 
-**Do this instead:** Use a query builder library (jOOQ, QueryDSL) or create a DatabaseDialect abstraction to handle SQL generation per database type.
+**Do this instead:** If BigQuery cost becomes a concern, consider caching the COUNT for a short TTL, or exposing a max-rows-only mode without total count for high-traffic queries.
 
-**Reference:** `infrastructure/db/JdbcQueryExecutor.java:34-173`
+**Reference:** `infrastructure/bigquery/BigQueryQueryExecutor.java`
 
 ### Duplicated Mapper Classes for Each Query
 
-**What happens:** 11 separate mapper classes (SalesSummaryMapper, TopProductMapper, etc.) each implementing ResultSetMapper with manual field extraction
+**What happens:** 15 separate mapper classes (SalesSummaryMapper, TopProductMapper, etc.) each implementing RowMapper with manual field extraction
 
-**Why it's wrong:** Code duplication; violation of DRY; maintenance burden when schema changes
+**Why it's wrong:** Code duplication; violation of DRY; maintenance burden when a table function's output schema changes
 
-**Do this instead:** Use reflection-based mapping (Jackson + @JsonProperty) or generate mappers via annotation processor. GenericMapMapper works but lose type safety.
+**Do this instead:** Use reflection-based mapping or generate mappers via annotation processor. GenericMapMapper works but loses type safety (and, for BigQuery, loses column names too — see note below).
 
 **Reference:** `infrastructure/mapper/queries/*.java` (all similar pattern)
 
+### GenericMapMapper Has No Column Names
+
+**What happens:** Unlike the old `ResultSet`-based version (which read column labels via `ResultSetMetaData`), `FieldValueList` does not expose column names without the query's `Schema` — not available to the mapper today. The fallback mapper (`infrastructure/mapper/GenericMapMapper.java`) keys the map positionally (`field_0`, `field_1`, ...) instead of by real column name.
+
+**Why it's wrong:** Any query relying on the generic fallback (i.e. missing a `@Named` mapper) now returns semantically meaningless keys.
+
+**Do this instead:** Thread the `Schema` from `TableResult` into `GenericMapMapper.map()` so it can build real column-name keys.
+
+**Reference:** `infrastructure/mapper/GenericMapMapper.java`
+
 ### No Transaction Management
 
-**What happens:** Each query is a separate connection without explicit transaction control
+**What happens:** Each query runs as an independent BigQuery job, with no transactional grouping
 
-**Why it's wrong:** Read-only queries OK, but if schema/operations change in future, lack of transaction boundaries could cause inconsistency
+**Why it's wrong:** Not applicable today (BigQuery table functions are read-only, analytical), but worth remembering if write operations are ever added
 
-**Do this instead:** Wrap query execution in @Transactional(readOnly = true) or explicit transaction scope for future safety.
+**Do this instead:** N/A for the current read-only use case.
 
-**Reference:** `infrastructure/db/JdbcQueryExecutor.java:54-95`
+**Reference:** `infrastructure/bigquery/BigQueryQueryExecutor.java`
 
 ## Error Handling
 

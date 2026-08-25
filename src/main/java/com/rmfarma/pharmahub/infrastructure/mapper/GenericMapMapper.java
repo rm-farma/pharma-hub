@@ -1,28 +1,24 @@
 package com.rmfarma.pharmahub.infrastructure.mapper;
 
+import com.google.cloud.bigquery.FieldValueList;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @ApplicationScoped
 @Named("generic")
-public class GenericMapMapper implements ResultSetMapper<Map<String, Object>> {
+public class GenericMapMapper implements RowMapper<Map<String, Object>> {
 
+    // FieldValueList não expõe os nomes de coluna sem o Schema da query (não disponível aqui),
+    // por isso o fallback genérico usa chaves posicionais.
     @Override
-    public Map<String, Object> map(ResultSet rs) throws SQLException {
-        ResultSetMetaData meta = rs.getMetaData();
-        int columnCount = meta.getColumnCount();
-        Map<String, Object> row = new LinkedHashMap<>();
-        for (int i = 1; i <= columnCount; i++) {
-            String label = meta.getColumnLabel(i);
-            row.put(label, rs.getObject(i));
+    public Map<String, Object> map(FieldValueList row) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (int i = 0; i < row.size(); i++) {
+            result.put("field_" + i, row.get(i).isNull() ? null : row.get(i).getValue());
         }
-        return row;
+        return result;
     }
 }
-

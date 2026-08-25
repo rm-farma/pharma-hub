@@ -1,6 +1,6 @@
 key: abc-curve-summary
-version: "1.0.0"
-description: "Resumo da curva ABC (total de produtos e faturamento por classe A/B/C)"
+version: "2.0.0"
+description: "Resumo da curva ABC (total de produtos e faturamento por classe A/B/C) — consome a table function get_abc_curve_summary do BigQuery"
 endpoint: "/queries/abc-curve-summary/execute"
 tags:
   - curva-abc
@@ -27,4 +27,3 @@ pagination:
 timeoutMs: 60000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.AbcCurveSummaryDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.AbcCurveSummaryMapper"
-

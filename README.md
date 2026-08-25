@@ -8,7 +8,7 @@ Queries pré-aprovadas de vendas, estoque e curva ABC, expostas via REST — com
 
 ![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)
 ![Quarkus](https://img.shields.io/badge/Quarkus-3.27.2-blue?logo=quarkus&logoColor=white)
-![Postgres](https://img.shields.io/badge/PostgreSQL-JDBC-336791?logo=postgresql&logoColor=white)
+![BigQuery](https://img.shields.io/badge/BigQuery-Table%20Functions-4285F4?logo=googlebigquery&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Deploy-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)
 ![CI](https://github.com/rm-farma/pharma-hub/actions/workflows/ci.yml/badge.svg)
 ![Status](https://img.shields.io/badge/status-interno-lightgrey)
@@ -30,16 +30,16 @@ Três endpoints principais:
 Cada query é um par `metadata.yaml` + `query.sql` em `src/main/resources/queries/{query-key}/`. Adicionar uma query nova não exige lógica nova, só esses dois arquivos — detalhes em [`.planning/codebase/STRUCTURE.md`](.planning/codebase/STRUCTURE.md).
 
 <details>
-<summary><b>📋 Queries disponíveis</b> (11)</summary>
+<summary><b>📋 Queries disponíveis</b> (15)</summary>
 <br>
 
-`sales-summary` · `sales-overview` · `sales-comparison` · `top-sellers` · `top-products` · `stock-search` · `stock-metrics` · `stock-without-sales` · `idle-stock` · `abc-curve-summary` · `abc-curve-products`
+`sales-summary` · `sales-overview` · `sales-comparison` · `top-sellers` · `top-products` · `stock-search` · `stock-metrics` · `stock-without-sales` · `idle-stock` · `abc-curve-summary` · `abc-curve-products` · `items-sold-below-cost` · `manufacturer-sales` · `products-loss` · `top-products-by-category`
 
 </details>
 
 ## 🧱 Stack
 
-Java 21 · Quarkus 3.27.2 · JAX-RS + Jackson · PostgreSQL (JDBC/Agroal) · SmallRye OpenAPI/Swagger · GCP Secret Manager · Cloud Run (`southamerica-east1`) · GitHub Actions + Cloud Build
+Java 21 · Quarkus 3.27.2 · JAX-RS + Jackson · BigQuery (table functions) · SmallRye OpenAPI/Swagger · GCP Secret Manager · Cloud Run (`southamerica-east1`) · GitHub Actions + Cloud Build
 
 ## 🏗️ Arquitetura
 
@@ -57,14 +57,16 @@ flowchart LR
         A3["Domínio puro<br/>(models, ports, exceptions)"]
     end
     subgraph INFRA["🔌 infrastructure/"]
-        A4["JDBC, mappers,<br/>config, filesystem"]
+        A4["BigQuery, mappers,<br/>config, filesystem"]
     end
 
     API --> APP --> CORE
     INFRA -. implementa os ports .-> CORE
 ```
 
-**Requisição típica:** `ApiKeyFilter` valida `X-API-Key` → o use case busca a `QueryDefinition` e valida parâmetros → `JdbcQueryExecutor` roda o SQL (parâmetros nomeados, sem risco de injection) → um `ResultSetMapper` converte o resultado.
+**Requisição típica:** `ApiKeyFilter` valida `X-API-Key` → o use case busca a `QueryDefinition` e valida parâmetros → `BigQueryQueryExecutor` roda a query (uma chamada de table function com parâmetros nomeados `@param`, sem risco de injection) → um `RowMapper` converte o `FieldValueList` retornado.
+
+Cada `query.sql` não é mais um SELECT complexo: é uma única chamada a uma table function do BigQuery (ex.: `` SELECT * FROM `rm-farma-dw-prod.licenciado.get_sales_overview`(@cnpj, @startDate, @endDate) ``) mantida pelo time de dados. O pharma-hub deixou de ser dono da lógica de negócio em SQL — ele só invoca, tipa parâmetros e expõe via REST.
 
 📚 Detalhes completos em [`.planning/codebase/ARCHITECTURE.md`](.planning/codebase/ARCHITECTURE.md).
 
@@ -77,23 +79,16 @@ sdk install java 21.0.5-tem
 
 # 2. Autenticação GCP — os DOIS comandos são necessários, servem pra coisas diferentes
 gcloud auth login                          # autentica a CLI
-gcloud auth application-default login      # gera as ADC, que o Quarkus usa pra ler o Secret Manager
+gcloud auth application-default login      # gera as ADC, usadas pelo client BigQuery e pra ler o Secret Manager
 gcloud config set project rmfarma-dev
 
 # 3. Rodar
 ./mvnw quarkus:dev
 ```
 
-Sobe em **http://localhost:8080**. O perfil `dev` busca a URL/usuário/senha do banco direto do Secret Manager (secrets `gpt-db-host`, `gpt-db-user`, `gpt-db-password` em `rmfarma-dev`) — **não** usa `.env` nem `env.yaml`, esses arquivos na raiz não são lidos pela aplicação em nenhum perfil hoje.
+Sobe em **http://localhost:8080**. O perfil `dev` usa `quarkus.google.cloud.project-id=rmfarma-dev` como projeto de **execução dos jobs BigQuery (billing)** e de leitura do Secret Manager — **não** é o projeto onde vivem as table functions consultadas. As queries em `src/main/resources/queries/*/query.sql` referenciam a table function pelo nome totalmente qualificado no projeto de dados `rm-farma-dw-prod` (dataset `licenciado`), então é uma consulta cross-project: a identidade autenticada (sua conta via ADC em dev, a service account do Cloud Run em prod) precisa ter `roles/bigquery.dataViewer` no dataset `licenciado` de `rm-farma-dw-prod` e `roles/bigquery.jobUser` em `rmfarma`/`rmfarma-dev`.
 
-O banco (`hiperconversagpt`, projeto `rmfarma`) só libera IP do escritório na allowlist — a conexão usa o **Cloud SQL Connector** (IAM em vez de IP) via `postgres-socket-factory`. Funciona liso no jar empacotado; no `quarkus:dev` tem uma limitação conhecida, ver tabela abaixo.
-
-> ⚠️ **`quarkus:dev` não conecta no banco de verdade** — dá `ClassNotFoundException` no Cloud SQL Connector (isolamento de classloader do modo hot-reload, investigado em 2026-08-07). Pra testar algo que toca o banco, empacote e rode o jar direto:
-> ```bash
-> ./mvnw package -DskipTests -Dquarkus.package.jar.type=uber-jar
-> QUARKUS_PROFILE=prod DATABASE_URL="$(gcloud secrets versions access latest --secret=gpt-db-host --project=rmfarma-dev)" DATABASE_USER="$(gcloud secrets versions access latest --secret=gpt-db-user --project=rmfarma-dev)" DATABASE_PASSWORD="$(gcloud secrets versions access latest --secret=gpt-db-password --project=rmfarma-dev)" java -jar target/*-runner.jar
-> ```
-> Se também quiser o Swagger UI nesse teste manual, troque `prod` por `nonprod` nas duas ocorrências acima **e** adicione `-Dquarkus.profile=nonprod` no comando de `package` — Swagger é decidido em build-time, `QUARKUS_PROFILE` sozinho em runtime não é suficiente.
+> ⚠️ Não usa `.env` nem `env.yaml` — esses arquivos na raiz não são lidos pela aplicação em nenhum perfil hoje.
 
 > 🔑 API Keys de teste (hardcoded em dev): `d572765238d508028f78d576f0597ccabe0a78958a4ebc02` · `test-api-key-456`
 
@@ -105,9 +100,9 @@ O banco (`hiperconversagpt`, projeto `rmfarma`) só libera IP do escritório na 
 |---|---|
 | `UNAUTHENTICATED: Failed computing credential metadata` | `gcloud auth application-default login` |
 | `PERMISSION_DENIED` ao ler secret | Pedir `roles/secretmanager.secretAccessor` em `rmfarma-dev` ao time de infra |
+| `PERMISSION_DENIED` / `Access Denied` ao rodar uma query BigQuery | Pedir `roles/bigquery.dataViewer` no dataset `licenciado` de `rm-farma-dw-prod` e `roles/bigquery.jobUser` em `rmfarma-dev` ao time de dados/infra |
 | `Header X-API-Key é obrigatório` | Esperado — adicione `-H "X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02"` |
 | `QueryNotFoundException` | `GET /queries` lista as keys válidas |
-| `SocketFactory ... could not be instantiated` (só no `quarkus:dev`) | Limitação conhecida de classloader — teste via jar empacotado (comando acima) |
 
 </details>
 
@@ -122,10 +117,10 @@ O banco (`hiperconversagpt`, projeto `rmfarma`) só libera IP do escritório na 
 
 ## 🔐 Variáveis de ambiente e secrets
 
-| Perfil | Origem do banco | API Keys |
-|---|---|---|
-| `dev` (local) | Secret Manager `rmfarma-dev`: `gpt-db-host`, `gpt-db-user`, `gpt-db-password` | Hardcoded: `d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456` |
-| `prod` (Cloud Run) | Secret Manager `rmfarma`: `gpt-db-host`, `gpt-db-user`, `gpt-db-password` (banco compartilhado com dev) | Mesmas hardcoded acima — **⚠️ ver nota abaixo** |
+| Perfil | Projeto BigQuery (jobs/billing) | Dados consultados | API Keys |
+|---|---|---|---|
+| `dev` (local) | `rmfarma-dev` (via ADC) | `rm-farma-dw-prod.licenciado.*` (cross-project) | Hardcoded: `d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456` |
+| `prod` (Cloud Run) | `rmfarma` (via service account do Cloud Run) | `rm-farma-dw-prod.licenciado.*` (cross-project) | Mesmas hardcoded acima — **⚠️ ver nota abaixo** |
 
 > ⚠️ As chaves `pharma-app`/`admin-dashboard` foram removidas em 2026-08-07 por não terem cliente real associado. Sem chaves específicas de prod, a API em produção passa a aceitar as **mesmas chaves hardcoded do dev** (`d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456`) — elas estão públicas no código-fonte. Se o pharma-hub for exposto pra clientes reais, é preciso definir chaves de produção antes disso (ver [Pontos de atenção](#-pontos-de-atenção-conhecidos)).
 
@@ -140,6 +135,43 @@ curl -X POST http://localhost:8080/queries/sales-summary/execute \
 ```
 
 Ou pelo **Swagger UI** (`/q/swagger-ui`) — clique "Authorize" e cole a API Key uma vez.
+
+## 🌍 Ambientes implantados
+
+Pra times externos consumindo a API — a mesma chave vale nos dois ambientes ([ver secrets](#-variáveis-de-ambiente-e-secrets)):
+
+| Ambiente | URL | Swagger |
+|---|---|---|
+| 🧪 **Dev** (`rmfarma-dev`) | [`pharma-hub-172688433868.southamerica-east1.run.app`](https://pharma-hub-172688433868.southamerica-east1.run.app) | ✅ [`/q/swagger-ui`](https://pharma-hub-172688433868.southamerica-east1.run.app/q/swagger-ui/) |
+| 🔒 **Prod** (`rmfarma`) | [`pharma-hub-575503576839.southamerica-east1.run.app`](https://pharma-hub-575503576839.southamerica-east1.run.app) | ❌ desligado por segurança |
+
+> Sem Swagger disponível em prod? Use a documentação do Dev como referência dos endpoints e troque só a URL base na hora de chamar de verdade.
+
+<details>
+<summary><b>💬 Mensagem pronta pra avisar outros times (Teams/Slack)</b></summary>
+<br>
+
+```
+🔌 Pharma Hub API — Como consumir
+
+Autenticação: toda chamada (exceto /health) exige o header abaixo.
+A mesma chave vale para os dois ambientes:
+
+X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02
+
+🧪 Dev
+https://pharma-hub-172688433868.southamerica-east1.run.app
+Documentação interativa (Swagger): /q/swagger-ui
+
+🔒 Prod
+https://pharma-hub-575503576839.southamerica-east1.run.app
+⚠️ Swagger desativado aqui por segurança — usem a doc do Dev
+como referência dos endpoints.
+
+Qualquer dúvida, me chamem.
+```
+
+</details>
 
 ## 📦 Build
 
@@ -216,7 +248,7 @@ src/main/java/com/rmfarma/pharmahub/
 ├── api/              # REST: resources, DTOs, filtros, exception mapper
 ├── application/      # Use cases
 ├── core/             # Domínio puro (sem deps externas)
-└── infrastructure/   # JDBC, mappers, config
+└── infrastructure/   # BigQuery, mappers, config
 
 src/main/resources/
 ├── application*.properties   # Config base / dev / prod
@@ -237,7 +269,7 @@ Auditoria completa em [`.planning/codebase/CONCERNS.md`](.planning/codebase/CONC
 
 ## 🔗 Links úteis
 
-[Docs do Quarkus](https://quarkus.io/guides/) · [Datasources](https://quarkus.io/guides/datasource) · [Config YAML](https://quarkus.io/guides/config-yaml) · [SmallRye Health](https://quarkus.io/guides/smallrye-health)
+[Docs do Quarkus](https://quarkus.io/guides/) · [Quarkus Google Cloud Services (BigQuery)](https://docs.quarkiverse.io/quarkus-google-cloud-services/main/bigquery.html) · [Config YAML](https://quarkus.io/guides/config-yaml) · [SmallRye Health](https://quarkus.io/guides/smallrye-health)
 
 ## 🤖 Codando com Claude Code neste projeto
 

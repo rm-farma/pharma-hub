@@ -1,0 +1,29 @@
+key: items-sold-below-cost
+version: "1.0.0"
+description: "Vendas individuais realizadas abaixo do custo do produto no período — consome a table function get_items_sold_below_cost do BigQuery"
+endpoint: "/queries/items-sold-below-cost/execute"
+tags:
+  - vendas
+  - prejuizo
+  - abaixo-do-custo
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+pagination:
+  defaultPageSize: 20
+  maxPageSize: 100
+  allowUnpaged: true
+  maxUnpagedRows: 1000
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.ItemSoldBelowCostDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.ItemSoldBelowCostMapper"

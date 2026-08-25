@@ -1,29 +1,27 @@
 package com.rmfarma.pharmahub.infrastructure.mapper.queries;
 
+import com.google.cloud.bigquery.FieldValueList;
 import com.rmfarma.pharmahub.api.dto.response.queries.AbcCurveSummaryDTO;
-import com.rmfarma.pharmahub.infrastructure.mapper.ResultSetMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.BigQueryValues;
+import com.rmfarma.pharmahub.infrastructure.mapper.RowMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
 @ApplicationScoped
 @Named("abc-curve-summary")
-public class AbcCurveSummaryMapper implements ResultSetMapper<AbcCurveSummaryDTO> {
+public class AbcCurveSummaryMapper implements RowMapper<AbcCurveSummaryDTO> {
 
     @Override
-    public AbcCurveSummaryDTO map(ResultSet rs) throws SQLException {
+    public AbcCurveSummaryDTO map(FieldValueList row) {
         return new AbcCurveSummaryDTO(
-                rs.getLong("total_produtos"),
-                rs.getLong("total_produtos_a"),
-                rs.getLong("total_produtos_b"),
-                rs.getLong("total_produtos_c"),
-                rs.getBigDecimal("faturamento_total"),
-                rs.getBigDecimal("faturamento_a"),
-                rs.getBigDecimal("faturamento_b"),
-                rs.getBigDecimal("faturamento_c")
+                BigQueryValues.longValue(row, "total_produtos"),
+                BigQueryValues.longValue(row, "total_produtos_a"),
+                BigQueryValues.longValue(row, "total_produtos_b"),
+                BigQueryValues.longValue(row, "total_produtos_c"),
+                BigQueryValues.numeric(row, "faturamento_total"),
+                BigQueryValues.numeric(row, "faturamento_a"),
+                BigQueryValues.numeric(row, "faturamento_b"),
+                BigQueryValues.numeric(row, "faturamento_c")
         );
     }
 }
-

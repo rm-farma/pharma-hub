@@ -1,0 +1,28 @@
+key: products-loss
+version: "1.0.0"
+description: "Produtos com resultado negativo no período, somando todas as vendas por EAN — consome a table function get_products_loss_by_period do BigQuery"
+endpoint: "/queries/products-loss/execute"
+tags:
+  - vendas
+  - prejuizo
+params:
+  - name: cnpj
+    type: STRING
+    required: true
+    description: "CNPJ da loja"
+  - name: startDate
+    type: DATE
+    required: true
+    description: "Data início do período"
+  - name: endDate
+    type: DATE
+    required: true
+    description: "Data fim do período"
+pagination:
+  defaultPageSize: 20
+  maxPageSize: 100
+  allowUnpaged: true
+  maxUnpagedRows: 1000
+timeoutMs: 30000
+dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.ProductsLossDTO"
+mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.ProductsLossMapper"

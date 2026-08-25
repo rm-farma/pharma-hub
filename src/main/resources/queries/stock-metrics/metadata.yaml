@@ -1,6 +1,6 @@
 key: stock-metrics
-version: "1.0.0"
-description: "Métricas gerais do estoque (custo total e itens de alta rotatividade)"
+version: "2.0.0"
+description: "Métricas gerais do estoque (custo total e valor dos itens de alta rotatividade) — consome a table function get_stock_metrics do BigQuery"
 endpoint: "/queries/stock-metrics/execute"
 tags:
   - estoque
@@ -18,4 +18,3 @@ pagination:
 timeoutMs: 30000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.StockMetricsDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.StockMetricsMapper"
-

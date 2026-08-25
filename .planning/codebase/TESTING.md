@@ -61,8 +61,8 @@ src/test/java/
     │   └── HealthResourceTest.java
     ├── application/
     │   └── ExecuteQueryUseCaseTest.java
-    ├── infrastructure/db/
-    │   └── JdbcQueryExecutorTest.java
+    ├── infrastructure/bigquery/
+    │   └── BigQueryQueryExecutorTest.java
     └── infrastructure/mapper/
         └── TopSellerMapperTest.java
 ```
@@ -177,7 +177,7 @@ public class QueryExecutionResourceTest {
         .then()
             .statusCode(200)
             .body("status", equalTo("UP"))
-            .body("database", equalTo("connected"));
+            .body("bigquery", equalTo("connected"));
     }
 }
 ```
@@ -189,7 +189,7 @@ public class QueryExecutionResourceTest {
 - Should be added for unit testing application layer and infrastructure
 
 **When to Mock:**
-- Database access: Mock `AgroalDataSource` or `QueryRepository`
+- BigQuery access: Mock the `com.google.cloud.bigquery.BigQuery` client (it's a plain interface from the SDK — mockable with Mockito, no emulator needed) or mock `QueryRepository`/`QueryExecutor` at the port level
 - External service calls
 - Configuration values (can use `@ConfigProperty` injection testing)
 
@@ -311,8 +311,8 @@ void testExecuteTopSellersQuery() {
 
 **E2E Tests:**
 - Framework: Not configured
-- Could use Testcontainers for database isolation in CI/CD
-- Would test full request→database→response flow with real PostgreSQL container
+- BigQuery has no first-class emulator/Testcontainers module comparable to what was available for Postgres — realistic E2E would need a real (sandboxed/test) BigQuery project and dataset, or a fake `BigQuery` implementation
+- Would test full request→BigQuery job→response flow
 
 ## Common Patterns
 
@@ -413,12 +413,12 @@ void testUnpagedResponseStructure() {
 **Profile-Based Testing:**
 - By default, `@QuarkusTest` uses `test` profile
 - Test-specific config: `src/test/resources/application-test.properties` (when needed)
-- Dev database config already available at `application-dev.properties`
+- Dev BigQuery/GCP project config already available at `application-dev.properties`
 
-**Database Testing:**
-- Tests use configured datasource (currently PostgreSQL)
-- Could use H2 in-memory for isolated unit tests: add test dependency for H2 driver
-- Testcontainers recommended for realistic CI/CD pipeline testing
+**BigQuery Testing:**
+- Data source is now BigQuery (`rm-farma-dw-prod.licenciado`), accessed via the injected `BigQuery` client — no more PostgreSQL/Agroal datasource
+- For unit tests, mock the `BigQuery` interface directly (no emulator required) to verify `BigQueryQueryExecutor`/`BigQueryParamResolver` behavior (parameter binding, pagination SQL construction, mapper dispatch) without hitting real BigQuery
+- For integration-style tests that need real query results, point at a real (test) BigQuery project/dataset — there is no lightweight local BigQuery emulator equivalent to Testcontainers-Postgres
 
 ---
 

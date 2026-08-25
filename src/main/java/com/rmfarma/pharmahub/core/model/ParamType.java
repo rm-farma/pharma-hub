@@ -1,133 +1,71 @@
 package com.rmfarma.pharmahub.core.model;
 
+import com.google.cloud.bigquery.QueryParameterValue;
+import com.google.cloud.bigquery.StandardSQLTypeName;
+
 import java.math.BigDecimal;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public enum ParamType {
 
-    STRING {
+    STRING(StandardSQLTypeName.STRING) {
         @Override
         public Object convert(String value) {
             return value;
         }
-
-        @Override
-        public void bind(PreparedStatement ps, int index, Object value) throws SQLException {
-            if (value == null) {
-                ps.setNull(index, Types.VARCHAR);
-            } else {
-                ps.setString(index, value.toString());
-            }
-        }
     },
-    INTEGER {
+    INTEGER(StandardSQLTypeName.INT64) {
         @Override
         public Object convert(String value) {
             return Integer.parseInt(value);
         }
-
-        @Override
-        public void bind(PreparedStatement ps, int index, Object value) throws SQLException {
-            if (value == null) {
-                ps.setNull(index, Types.INTEGER);
-            } else {
-                ps.setInt(index, ((Number) value).intValue());
-            }
-        }
     },
-    LONG {
+    LONG(StandardSQLTypeName.INT64) {
         @Override
         public Object convert(String value) {
             return Long.parseLong(value);
         }
-
-        @Override
-        public void bind(PreparedStatement ps, int index, Object value) throws SQLException {
-            if (value == null) {
-                ps.setNull(index, Types.BIGINT);
-            } else {
-                ps.setLong(index, ((Number) value).longValue());
-            }
-        }
     },
-    DECIMAL {
+    DECIMAL(StandardSQLTypeName.NUMERIC) {
         @Override
         public Object convert(String value) {
             return new BigDecimal(value);
         }
-
-        @Override
-        public void bind(PreparedStatement ps, int index, Object value) throws SQLException {
-            if (value == null) {
-                ps.setNull(index, Types.DECIMAL);
-            } else {
-                ps.setBigDecimal(index, new BigDecimal(value.toString()));
-            }
-        }
     },
-    BOOLEAN {
+    BOOLEAN(StandardSQLTypeName.BOOL) {
         @Override
         public Object convert(String value) {
-            return java.lang.Boolean.parseBoolean(value);
-        }
-
-        @Override
-        public void bind(PreparedStatement ps, int index, Object value) throws SQLException {
-            if (value == null) {
-                ps.setNull(index, Types.BOOLEAN);
-            } else {
-                ps.setBoolean(index, (Boolean) value);
-            }
+            return Boolean.parseBoolean(value);
         }
     },
-    DATE {
+    DATE(StandardSQLTypeName.DATE) {
         @Override
         public Object convert(String value) {
-            return Date.valueOf(LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE));
-        }
-
-        @Override
-        public void bind(PreparedStatement ps, int index, Object value) throws SQLException {
-            if (value == null) {
-                ps.setNull(index, Types.DATE);
-            } else if (value instanceof Date d) {
-                ps.setDate(index, d);
-            } else {
-                ps.setDate(index, Date.valueOf(value.toString()));
-            }
+            return LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
         }
     },
-    TIMESTAMP {
+    TIMESTAMP(StandardSQLTypeName.TIMESTAMP) {
         @Override
         public Object convert(String value) {
-            return Timestamp.valueOf(LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        }
-
-        @Override
-        public void bind(PreparedStatement ps, int index, Object value) throws SQLException {
-            if (value == null) {
-                ps.setNull(index, Types.TIMESTAMP);
-            } else if (value instanceof Timestamp t) {
-                ps.setTimestamp(index, t);
-            } else {
-                ps.setTimestamp(index, Timestamp.valueOf(value.toString()));
-            }
+            return LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         }
     };
 
+    private final StandardSQLTypeName sqlType;
+
+    ParamType(StandardSQLTypeName sqlType) {
+        this.sqlType = sqlType;
+    }
+
     public abstract Object convert(String value);
 
-    public abstract void bind(PreparedStatement ps, int index, Object value) throws SQLException;
+    public QueryParameterValue toQueryParameterValue(Object value) {
+        return QueryParameterValue.of(value, sqlType);
+    }
 
     public static ParamType fromString(String type) {
         return ParamType.valueOf(type.toUpperCase());
     }
 }
-

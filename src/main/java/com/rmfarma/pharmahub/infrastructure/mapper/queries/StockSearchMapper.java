@@ -1,29 +1,27 @@
 package com.rmfarma.pharmahub.infrastructure.mapper.queries;
 
+import com.google.cloud.bigquery.FieldValueList;
 import com.rmfarma.pharmahub.api.dto.response.queries.StockSearchDTO;
-import com.rmfarma.pharmahub.infrastructure.mapper.ResultSetMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.BigQueryValues;
+import com.rmfarma.pharmahub.infrastructure.mapper.RowMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
 @ApplicationScoped
 @Named("stock-search")
-public class StockSearchMapper implements ResultSetMapper<StockSearchDTO> {
+public class StockSearchMapper implements RowMapper<StockSearchDTO> {
 
     @Override
-    public StockSearchDTO map(ResultSet rs) throws SQLException {
+    public StockSearchDTO map(FieldValueList row) {
         return new StockSearchDTO(
-                rs.getString("ean"),
-                rs.getString("apresentacao"),
-                rs.getString("fabricante"),
-                rs.getString("grupo_macro"),
-                rs.getBigDecimal("saldo_estoque"),
-                rs.getBigDecimal("custo_medio"),
-                rs.getBigDecimal("custo_medio_total"),
-                rs.getBigDecimal("preco_venda")
+                BigQueryValues.string(row, "ean"),
+                BigQueryValues.string(row, "apresentacao"),
+                BigQueryValues.string(row, "fabricante"),
+                BigQueryValues.string(row, "grupo_macro"),
+                BigQueryValues.numeric(row, "saldo_estoque"),
+                BigQueryValues.numeric(row, "custo_medio"),
+                BigQueryValues.numeric(row, "custo_medio_total"),
+                BigQueryValues.numeric(row, "preco_venda")
         );
     }
 }
-

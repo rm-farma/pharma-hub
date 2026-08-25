@@ -1,6 +1,6 @@
 key: top-products
-version: "1.0.0"
-description: "Top produtos por quantidade vendida no período"
+version: "2.0.0"
+description: "Top produtos por quantidade vendida no período — consome a table function get_top_products_by_period do BigQuery"
 endpoint: "/queries/top-products/execute"
 tags:
   - vendas
@@ -19,11 +19,6 @@ params:
     type: DATE
     required: true
     description: "Data fim do período"
-  - name: limit
-    type: INTEGER
-    required: false
-    description: "Quantidade máxima de produtos retornados"
-    defaultValue: "10"
 pagination:
   defaultPageSize: 10
   maxPageSize: 100
@@ -32,4 +27,3 @@ pagination:
 timeoutMs: 30000
 dtoClassName: "com.rmfarma.pharmahub.api.dto.response.queries.TopProductDTO"
 mapperClassName: "com.rmfarma.pharmahub.infrastructure.mapper.queries.TopProductMapper"
-

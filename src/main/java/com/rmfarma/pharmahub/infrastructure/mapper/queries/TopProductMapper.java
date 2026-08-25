@@ -1,24 +1,22 @@
 package com.rmfarma.pharmahub.infrastructure.mapper.queries;
 
+import com.google.cloud.bigquery.FieldValueList;
 import com.rmfarma.pharmahub.api.dto.response.queries.TopProductDTO;
-import com.rmfarma.pharmahub.infrastructure.mapper.ResultSetMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.BigQueryValues;
+import com.rmfarma.pharmahub.infrastructure.mapper.RowMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
 @ApplicationScoped
 @Named("top-products")
-public class TopProductMapper implements ResultSetMapper<TopProductDTO> {
+public class TopProductMapper implements RowMapper<TopProductDTO> {
 
     @Override
-    public TopProductDTO map(ResultSet rs) throws SQLException {
+    public TopProductDTO map(FieldValueList row) {
         return new TopProductDTO(
-                rs.getString("product_name"),
-                rs.getBigDecimal("total_quantity"),
-                rs.getBigDecimal("total_amount")
+                BigQueryValues.string(row, "productName"),
+                BigQueryValues.numeric(row, "totalQuantity"),
+                BigQueryValues.numeric(row, "totalAmount")
         );
     }
 }
-
