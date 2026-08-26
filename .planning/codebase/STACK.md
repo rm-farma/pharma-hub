@@ -43,7 +43,7 @@
 - Quarkus Google Cloud Services — BigQuery (`quarkus-google-cloud-bigquery`, resolved 2.18.0) - injects the `BigQuery` client used to run table-function queries as BigQuery jobs
   - Dependency: `io.quarkiverse.googlecloudservices:quarkus-google-cloud-bigquery` in `pom.xml`
   - No connection pooling concept (unlike JDBC/Agroal, which this replaced) — each query submits a job via `bigquery.query(QueryJobConfiguration)`
-  - Data project: `rm-farma-dw-prod`, dataset `licenciado` (cross-project relative to the app's own GCP project, `rmfarma`/`rmfarma-dev`)
+  - Data project: `rmfarma`, dataset `ISAZ` — same project as the app's own GCP project in prod (`rmfarma`); cross-project in dev, where the app runs under `rmfarma-dev`
 
 **Testing:**
 - JUnit 5 - Test runner
@@ -121,7 +121,7 @@
 - Java 21 (Eclipse Temurin or compatible)
 - Maven 3.9+
 - gcloud CLI (for GCP Secret Manager and BigQuery authentication with `gcloud auth application-default login`)
-- BigQuery access to project `rm-farma-dw-prod`, dataset `licenciado` (cross-project IAM — see INTEGRATIONS.md)
+- BigQuery access to project `rmfarma`, dataset `ISAZ` (cross-project IAM — see INTEGRATIONS.md)
 
 **Production:**
 - Deployment target: Google Cloud Run (managed container service)
