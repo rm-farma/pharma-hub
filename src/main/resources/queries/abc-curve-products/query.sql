@@ -10,5 +10,5 @@ SELECT
   saldo_estoque,
   preco_venda,
   custo_medio
-FROM `rm-farma-dw-prod.licenciado.get_abc_curve_products`(@cnpj, @startDate, @endDate, @classeAbc)
+FROM `rmfarma.ISAZ.get_abc_curve_products`(@cnpj, @startDate, @endDate, @classeAbc)
 ORDER BY faturamento_total DESC
