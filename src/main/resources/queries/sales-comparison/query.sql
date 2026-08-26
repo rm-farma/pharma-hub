@@ -10,4 +10,4 @@ SELECT
   ticketMedioBase,
   ticketMedioComparado,
   variacaoTicketMedio
-FROM `rm-farma-dw-prod.licenciado.compare_sales_periods`(@cnpj, @startDate1, @endDate1, @startDate2, @endDate2)
+FROM `rmfarma.ISAZ.compare_sales_periods`(@cnpj, @startDate1, @endDate1, @startDate2, @endDate2)
