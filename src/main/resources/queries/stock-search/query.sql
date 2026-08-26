@@ -7,5 +7,5 @@ SELECT
   custo_medio,
   custo_medio_total,
   preco_venda
-FROM `rm-farma-dw-prod.licenciado.get_stock_by_search`(@cnpj, @searchTerm)
+FROM `rmfarma.ISAZ.get_stock_by_search`(@cnpj, @searchTerm)
 ORDER BY apresentacao ASC
