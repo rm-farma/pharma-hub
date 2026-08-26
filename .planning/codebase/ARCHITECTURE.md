@@ -4,7 +4,7 @@
 
 ## System Overview
 
-Pharma Hub is a REST API for invoking pre-approved analytics table functions published in BigQuery (project `rm-farma-dw-prod`, dataset `licenciado`). It provides an abstraction layer over 15 predefined queries with support for pagination, typed parameters, and API key authentication.
+Pharma Hub is a REST API for invoking pre-approved analytics table functions published in BigQuery (project `rmfarma`, dataset `ISAZ`). It provides an abstraction layer over 15 predefined queries with support for pagination, typed parameters, and API key authentication.
 
 > **Migration note (2026-08-24):** this project originally queried a PostgreSQL replica (`bq_licenciado_rel` schema, itself an ETL copy of BigQuery data) via JDBC. The data team has since published the same business logic as BigQuery table functions, which are now the source of truth. The Postgres/JDBC stack was removed entirely (not a dual-engine migration — the old stack never had a real consumer) and replaced by a `BigQueryQueryExecutor`. Diagrams and line references below reflect the current BigQuery-based architecture; some line numbers pre-date this migration and may have shifted.
 
@@ -64,10 +64,10 @@ Pharma Hub is a REST API for invoking pre-approved analytics table functions pub
 │  │ `query/`         │ `bigquery/`     │ `mapper/`, `config/` │  │
 │  └──────────────────┴─────────────────┴──────────────────────┘  │
 │                         ▼                                        │
-│                  BigQuery (project rm-farma-dw-prod)             │
-│                  Table functions in the `licenciado` dataset,    │
+│                  BigQuery (project rmfarma)                      │
+│                  Table functions in the `ISAZ` dataset,          │
 │                  invoked from a query job run in rmfarma/        │
-│                  rmfarma-dev (cross-project, IAM-gated)          │
+│                  rmfarma-dev (cross-project only for dev/nonprod)│
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -153,7 +153,7 @@ Pharma Hub is a REST API for invoking pre-approved analytics table functions pub
 
 4. **Query Execution** (`infrastructure/bigquery/BigQueryQueryExecutor.executePaged()` or `.executeUnpaged()`)
    - The `sqlTemplate` is a single call to a BigQuery table function, e.g.
-     `` SELECT * FROM `rm-farma-dw-prod.licenciado.get_sales_overview`(@cnpj, @startDate, @endDate) ``
+     `` SELECT * FROM `rmfarma.ISAZ.get_sales_overview`(@cnpj, @startDate, @endDate) ``
    - For PAGED:
      - Run a COUNT job: `executeCount()` wraps the table-function call in a subquery (same strategy as before, now costed in BigQuery bytes scanned)
      - Strip LIMIT from original SQL
@@ -161,7 +161,7 @@ Pharma Hub is a REST API for invoking pre-approved analytics table functions pub
    - For UNPAGED:
      - Append LIMIT (maxRows + 1) to detect truncation
    - Resolve named parameters: `BigQueryParamResolver.resolve()` converts `@param` placeholders into `QueryParameterValue` bindings (via `ParamType.toQueryParameterValue()`)
-   - Submit as a `QueryJobConfiguration` via the injected `BigQuery` client; the job runs in the app's configured project (`rmfarma`/`rmfarma-dev`), reading cross-project from `rm-farma-dw-prod`
+   - Submit as a `QueryJobConfiguration` via the injected `BigQuery` client; the job runs in the app's configured project (`rmfarma`/`rmfarma-dev`), reading from `rmfarma.ISAZ` — same-project in prod, cross-project in dev/nonprod
 
 5. **Result Mapping** (`infrastructure/mapper/*.java`)
    - Look up query-specific mapper by key (via @Named annotation)
@@ -199,7 +199,7 @@ Pharma Hub is a REST API for invoking pre-approved analytics table functions pub
 
 **Health Check:**
 1. GET /health → HealthResource.health()
-2. Test BigQuery connectivity by fetching the `licenciado` dataset metadata in `rm-farma-dw-prod`
+2. Test BigQuery connectivity by fetching the `ISAZ` dataset metadata in `rmfarma`
 3. Return {status: UP/DOWN, bigquery: connected/disconnected}
 4. No authentication required
 
