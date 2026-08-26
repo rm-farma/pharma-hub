@@ -416,7 +416,7 @@ void testUnpagedResponseStructure() {
 - Dev BigQuery/GCP project config already available at `application-dev.properties`
 
 **BigQuery Testing:**
-- Data source is now BigQuery (`rm-farma-dw-prod.licenciado`), accessed via the injected `BigQuery` client — no more PostgreSQL/Agroal datasource
+- Data source is now BigQuery (`rmfarma.ISAZ`), accessed via the injected `BigQuery` client — no more PostgreSQL/Agroal datasource
 - For unit tests, mock the `BigQuery` interface directly (no emulator required) to verify `BigQueryQueryExecutor`/`BigQueryParamResolver` behavior (parameter binding, pagination SQL construction, mapper dispatch) without hitting real BigQuery
 - For integration-style tests that need real query results, point at a real (test) BigQuery project/dataset — there is no lightweight local BigQuery emulator equivalent to Testcontainers-Postgres
 

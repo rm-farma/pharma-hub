@@ -7,4 +7,4 @@ SELECT
   faturamento_a,
   faturamento_b,
   faturamento_c
-FROM `rm-farma-dw-prod.licenciado.get_abc_curve_summary`(@cnpj, @startDate, @endDate)
+FROM `rmfarma.ISAZ.get_abc_curve_summary`(@cnpj, @startDate, @endDate)
