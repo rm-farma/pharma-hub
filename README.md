@@ -66,7 +66,7 @@ flowchart LR
 
 **Requisição típica:** `ApiKeyFilter` valida `X-API-Key` → o use case busca a `QueryDefinition` e valida parâmetros → `BigQueryQueryExecutor` roda a query (uma chamada de table function com parâmetros nomeados `@param`, sem risco de injection) → um `RowMapper` converte o `FieldValueList` retornado.
 
-Cada `query.sql` não é mais um SELECT complexo: é uma única chamada a uma table function do BigQuery (ex.: `` SELECT * FROM `rm-farma-dw-prod.licenciado.get_sales_overview`(@cnpj, @startDate, @endDate) ``) mantida pelo time de dados. O pharma-hub deixou de ser dono da lógica de negócio em SQL — ele só invoca, tipa parâmetros e expõe via REST.
+Cada `query.sql` não é mais um SELECT complexo: é uma única chamada a uma table function do BigQuery (ex.: `` SELECT * FROM `rmfarma.ISAZ.get_sales_overview`(@cnpj, @startDate, @endDate) ``) mantida pelo time de dados. O pharma-hub deixou de ser dono da lógica de negócio em SQL — ele só invoca, tipa parâmetros e expõe via REST.
 
 📚 Detalhes completos em [`.planning/codebase/ARCHITECTURE.md`](.planning/codebase/ARCHITECTURE.md).
 
@@ -86,7 +86,7 @@ gcloud config set project rmfarma-dev
 ./mvnw quarkus:dev
 ```
 
-Sobe em **http://localhost:8080**. O perfil `dev` usa `quarkus.google.cloud.project-id=rmfarma-dev` como projeto de **execução dos jobs BigQuery (billing)** e de leitura do Secret Manager — **não** é o projeto onde vivem as table functions consultadas. As queries em `src/main/resources/queries/*/query.sql` referenciam a table function pelo nome totalmente qualificado no projeto de dados `rm-farma-dw-prod` (dataset `licenciado`), então é uma consulta cross-project: a identidade autenticada (sua conta via ADC em dev, a service account do Cloud Run em prod) precisa ter `roles/bigquery.dataViewer` no dataset `licenciado` de `rm-farma-dw-prod` e `roles/bigquery.jobUser` em `rmfarma`/`rmfarma-dev`.
+Sobe em **http://localhost:8080**. O perfil `dev` usa `quarkus.google.cloud.project-id=rmfarma-dev` como projeto de **execução dos jobs BigQuery (billing)** e de leitura do Secret Manager — **não** é o projeto onde vivem as table functions consultadas. As queries em `src/main/resources/queries/*/query.sql` referenciam a table function pelo nome totalmente qualificado no projeto de dados `rmfarma` (dataset `ISAZ`), então em dev é uma consulta cross-project: a identidade autenticada via ADC precisa ter `roles/bigquery.dataViewer` no dataset `ISAZ` de `rmfarma` e `roles/bigquery.jobUser` em `rmfarma-dev`. Em prod não é cross-project — o billing project do Cloud Run já é o próprio `rmfarma`, mesmo projeto do dataset `ISAZ`.
 
 > ⚠️ Não usa `.env` nem `env.yaml` — esses arquivos na raiz não são lidos pela aplicação em nenhum perfil hoje.
 
@@ -100,7 +100,7 @@ Sobe em **http://localhost:8080**. O perfil `dev` usa `quarkus.google.cloud.proj
 |---|---|
 | `UNAUTHENTICATED: Failed computing credential metadata` | `gcloud auth application-default login` |
 | `PERMISSION_DENIED` ao ler secret | Pedir `roles/secretmanager.secretAccessor` em `rmfarma-dev` ao time de infra |
-| `PERMISSION_DENIED` / `Access Denied` ao rodar uma query BigQuery | Pedir `roles/bigquery.dataViewer` no dataset `licenciado` de `rm-farma-dw-prod` e `roles/bigquery.jobUser` em `rmfarma-dev` ao time de dados/infra |
+| `PERMISSION_DENIED` / `Access Denied` ao rodar uma query BigQuery | Pedir `roles/bigquery.dataViewer` no dataset `ISAZ` de `rmfarma` e `roles/bigquery.jobUser` em `rmfarma-dev` ao time de dados/infra |
 | `Header X-API-Key é obrigatório` | Esperado — adicione `-H "X-API-Key: d572765238d508028f78d576f0597ccabe0a78958a4ebc02"` |
 | `QueryNotFoundException` | `GET /queries` lista as keys válidas |
 
@@ -119,8 +119,8 @@ Sobe em **http://localhost:8080**. O perfil `dev` usa `quarkus.google.cloud.proj
 
 | Perfil | Projeto BigQuery (jobs/billing) | Dados consultados | API Keys |
 |---|---|---|---|
-| `dev` (local) | `rmfarma-dev` (via ADC) | `rm-farma-dw-prod.licenciado.*` (cross-project) | Hardcoded: `d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456` |
-| `prod` (Cloud Run) | `rmfarma` (via service account do Cloud Run) | `rm-farma-dw-prod.licenciado.*` (cross-project) | Mesmas hardcoded acima — **⚠️ ver nota abaixo** |
+| `dev` (local) | `rmfarma-dev` (via ADC) | `rmfarma.ISAZ.*` (cross-project) | Hardcoded: `d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456` |
+| `prod` (Cloud Run) | `rmfarma` (via service account do Cloud Run) | `rmfarma.ISAZ.*` (mesmo projeto) | Mesmas hardcoded acima — **⚠️ ver nota abaixo** |
 
 > ⚠️ As chaves `pharma-app`/`admin-dashboard` foram removidas em 2026-08-07 por não terem cliente real associado. Sem chaves específicas de prod, a API em produção passa a aceitar as **mesmas chaves hardcoded do dev** (`d572765238d508028f78d576f0597ccabe0a78958a4ebc02`, `test-api-key-456`) — elas estão públicas no código-fonte. Se o pharma-hub for exposto pra clientes reais, é preciso definir chaves de produção antes disso (ver [Pontos de atenção](#-pontos-de-atenção-conhecidos)).
 
@@ -145,7 +145,7 @@ Pra times externos consumindo a API — a mesma chave vale nos dois ambientes ([
 | 🧪 **Dev** (`rmfarma-dev`) | [`pharma-hub-172688433868.southamerica-east1.run.app`](https://pharma-hub-172688433868.southamerica-east1.run.app) | ✅ [`/q/swagger-ui`](https://pharma-hub-172688433868.southamerica-east1.run.app/q/swagger-ui/) |
 | 🔒 **Prod** (`rmfarma`) | [`pharma-hub-575503576839.southamerica-east1.run.app`](https://pharma-hub-575503576839.southamerica-east1.run.app) | ✅ [`/q/swagger-ui`](https://pharma-hub-575503576839.southamerica-east1.run.app/q/swagger-ui/) |
 
-> ⚠️ **Dev/nonprod não tem acesso a dados reais.** Por decisão deliberada (2026-08-25), só a service account de produção tem permissão no BigQuery real (`rm-farma-dw-prod`). Em Dev, `/health` e qualquer `/queries/{key}/execute` retornam `Access Denied` — use o Swagger de Dev só para consultar contrato/schema dos endpoints, e teste com dados de verdade direto em Prod.
+> ⚠️ **Dev/nonprod não tem acesso a dados reais.** Por decisão deliberada (2026-08-25), só a service account de produção tem permissão no BigQuery real (`rmfarma.ISAZ`). Em Dev, `/health` e qualquer `/queries/{key}/execute` retornam `Access Denied` — use o Swagger de Dev só para consultar contrato/schema dos endpoints, e teste com dados de verdade direto em Prod.
 >
 > O Swagger de Prod está acessível porque o Cloud Run já exige IAM (`--no-allow-unauthenticated`) para alcançar o serviço — mesma proteção de rede que o Dev tem — e todas as queries são somente leitura (SELECT via table functions, sem nenhum caminho de escrita).
 
@@ -189,7 +189,7 @@ Qualquer dúvida, me chamem.
 | `main` | Produção (`rmfarma`) | `prod` (Swagger ligado, acesso real ao BigQuery) | `cloudbuild-prod.yaml` |
 | `develop` | Nonprod (`rmfarma-dev`) | `nonprod` (Swagger ligado, **sem** acesso ao BigQuery real) | `cloudbuild-nonprod.yaml` |
 
-> Projeto GCP e perfil Quarkus são coisas diferentes, mas usam o mesmo nome de propósito. Swagger fica ligado nos dois ambientes — a proteção de acesso é o IAM do Cloud Run (`--no-allow-unauthenticated`) em ambos, não a ausência do Swagger. A diferença real entre eles é o **dado**: só a service account de Prod tem permissão no dataset do BigQuery (`rm-farma-dw-prod`); Nonprod nunca recebe esse acesso, por decisão deliberada (ver [`INTEGRATIONS.md`](.planning/codebase/INTEGRATIONS.md#data-storage)). Ver [`application-nonprod.properties`](src/main/resources/application-nonprod.properties) e [`application-prod.properties`](src/main/resources/application-prod.properties).
+> Projeto GCP e perfil Quarkus são coisas diferentes, mas usam o mesmo nome de propósito. Swagger fica ligado nos dois ambientes — a proteção de acesso é o IAM do Cloud Run (`--no-allow-unauthenticated`) em ambos, não a ausência do Swagger. A diferença real entre eles é o **dado**: só a service account de Prod tem permissão no dataset do BigQuery (`rmfarma.ISAZ`); Nonprod nunca recebe esse acesso, por decisão deliberada (ver [`INTEGRATIONS.md`](.planning/codebase/INTEGRATIONS.md#data-storage)). Ver [`application-nonprod.properties`](src/main/resources/application-nonprod.properties) e [`application-prod.properties`](src/main/resources/application-prod.properties).
 
 ```mermaid
 gitGraph
