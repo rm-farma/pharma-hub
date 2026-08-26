@@ -10,5 +10,5 @@ SELECT
   total_unidades,
   valor_total_custo,
   valor_total_venda
-FROM `rm-farma-dw-prod.licenciado.get_idle_stock`(@cnpj)
+FROM `rmfarma.ISAZ.get_idle_stock`(@cnpj)
 ORDER BY custo_medio_total DESC
