@@ -149,6 +149,50 @@ Pra times externos consumindo a API — a mesma chave vale nos dois ambientes ([
 >
 > O Swagger de Prod está acessível porque o Cloud Run já exige IAM (`--no-allow-unauthenticated`) para alcançar o serviço — mesma proteção de rede que o Dev tem — e todas as queries são somente leitura (SELECT via table functions, sem nenhum caminho de escrita).
 
+### 🔑 Acesso de outros projetos GCP (`roles/run.invoker`)
+
+O Cloud Run sobe com `--no-allow-unauthenticated`, então **além** do `X-API-Key` toda chamada precisa de um **ID token do Google** em `Authorization: Bearer`. Sem ele o Cloud Run barra a requisição antes de ela chegar na aplicação — é por isso que consumir a API só funcionava atrás de um `gcloud run services proxy` local.
+
+Service accounts autorizadas a invocar o serviço de **Prod** (binding `roles/run.invoker` no serviço `pharma-hub`, concedido em 2026-08-27 para o time de front-end):
+
+| Service account | Projeto |
+|---|---|
+| `cloudbuild@rm-farma-saas-prod.iam.gserviceaccount.com` | `rm-farma-saas-prod` |
+| `166189183072-compute@developer.gserviceaccount.com` | SA padrão de Compute/Cloud Run do projeto deles |
+
+O binding é **por serviço**, não no projeto: essas SAs alcançam só o `pharma-hub`, nenhum outro dos ~20 serviços Cloud Run de `rmfarma`.
+
+Pra autorizar uma nova service account:
+
+```bash
+gcloud run services add-iam-policy-binding pharma-hub \
+  --region=southamerica-east1 --project=rmfarma \
+  --member="serviceAccount:SA_EMAIL" --role="roles/run.invoker"
+```
+
+> ⚠️ `roles/editor` **não** cobre `run.services.setIamPolicy` — o comando acima exige `roles/run.admin` (ou owner) no projeto `rmfarma`.
+
+Do lado de quem consome, rodando **server-side** com uma dessas SAs (Cloud Run, Cloud Functions, GCE, Cloud Build):
+
+```js
+// Node — google-auth-library resolve o ID token pela SA do ambiente
+import { GoogleAuth } from 'google-auth-library';
+
+const audience = 'https://pharma-hub-575503576839.southamerica-east1.run.app';
+const client = await new GoogleAuth().getIdTokenClient(audience);
+
+const { data } = await client.request({
+  url: `${audience}/queries/abc-curve-products/execute`,
+  method: 'POST',
+  headers: { 'X-API-Key': process.env.PHARMA_HUB_API_KEY },
+  data: { params: { cnpj, startDate, endDate, classeAbc: 'A' }, page: 1, pageSize: 50 },
+});
+```
+
+O `audience` do token **é a URL base do serviço** — token com audience errada volta `401`.
+
+> 🚫 **Chamada direta do navegador não funciona.** Um SPA não tem service account, então não consegue emitir ID token — e a API não tem CORS habilitado. O front precisa passar por um backend/BFF próprio (SSR, API route, Cloud Run), que é justamente o caso das SAs acima. Abrir a API pro browser exigiria `--allow-unauthenticated` + CORS + API Keys por cliente (ver [Pontos de atenção](#-pontos-de-atenção-conhecidos)).
+
 <details>
 <summary><b>💬 Mensagem pronta pra avisar outros times (Teams/Slack)</b></summary>
 <br>
