@@ -4,17 +4,16 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.QueryParameterValue;
+import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableResult;
 import com.rmfarma.pharmahub.core.model.PagedResult;
 import com.rmfarma.pharmahub.core.model.QueryDefinition;
 import com.rmfarma.pharmahub.core.model.UnpagedResult;
 import com.rmfarma.pharmahub.core.port.QueryExecutor;
-import com.rmfarma.pharmahub.infrastructure.mapper.GenericMapMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.MapperResolver;
 import com.rmfarma.pharmahub.infrastructure.mapper.RowMapper;
+import com.rmfarma.pharmahub.infrastructure.mapper.SchemaAwareRowMapper;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
-import jakarta.inject.Named;
 import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
@@ -36,17 +35,14 @@ public class BigQueryQueryExecutor implements QueryExecutor {
 
     private final BigQuery bigquery;
     private final BigQueryParamResolver paramResolver;
-    private final Instance<RowMapper<?>> mappers;
-    private final GenericMapMapper genericMapMapper;
+    private final MapperResolver mapperResolver;
 
     public BigQueryQueryExecutor(BigQuery bigquery,
                                   BigQueryParamResolver paramResolver,
-                                  @Any Instance<RowMapper<?>> mappers,
-                                  GenericMapMapper genericMapMapper) {
+                                  MapperResolver mapperResolver) {
         this.bigquery = bigquery;
         this.paramResolver = paramResolver;
-        this.mappers = mappers;
-        this.genericMapMapper = genericMapMapper;
+        this.mapperResolver = mapperResolver;
     }
 
     @Override
@@ -64,7 +60,7 @@ public class BigQueryQueryExecutor implements QueryExecutor {
 
         // 2. Data query: remover LIMIT original e usar nosso LIMIT/OFFSET
         String dataSql = sqlWithoutLimit + "\nLIMIT " + pageSize + " OFFSET " + offset;
-        RowMapper<T> mapper = (RowMapper<T>) resolveMapper(definition.key());
+        RowMapper<T> mapper = (RowMapper<T>) mapperResolver.resolve(definition);
 
         List<T> items = executeQuery(dataSql, params, definition, mapper);
 
@@ -81,7 +77,7 @@ public class BigQueryQueryExecutor implements QueryExecutor {
             sql = sql + "\nLIMIT " + (maxRows + 1);
         }
 
-        RowMapper<T> mapper = (RowMapper<T>) resolveMapper(definition.key());
+        RowMapper<T> mapper = (RowMapper<T>) mapperResolver.resolve(definition);
         List<T> items = executeQuery(sql, params, definition, mapper);
 
         boolean truncated = items.size() > maxRows;
@@ -104,8 +100,11 @@ public class BigQueryQueryExecutor implements QueryExecutor {
     private <T> List<T> executeQuery(String sql, Map<String, Object> params, QueryDefinition definition, RowMapper<T> mapper) {
         List<T> results = new ArrayList<>();
         TableResult result = runJob(sql, params, definition);
+        Schema schema = result.getSchema();
         for (FieldValueList row : result.iterateAll()) {
-            results.add(mapper.map(row));
+            results.add(mapper instanceof SchemaAwareRowMapper<T> schemaAware
+                    ? schemaAware.map(row, schema)
+                    : mapper.map(row));
         }
         return results;
     }
@@ -129,17 +128,6 @@ public class BigQueryQueryExecutor implements QueryExecutor {
             LOG.error("Erro ao executar query no BigQuery", e);
             throw new RuntimeException("Erro ao executar query: " + e.getMessage(), e);
         }
-    }
-
-    private RowMapper<?> resolveMapper(String queryKey) {
-        for (RowMapper<?> mapper : mappers) {
-            Named named = mapper.getClass().getAnnotation(Named.class);
-            if (named != null && named.value().equals(queryKey)) {
-                return mapper;
-            }
-        }
-        LOG.debugv("Mapper específico não encontrado para '{0}', usando GenericMapMapper", queryKey);
-        return genericMapMapper;
     }
 
     /**
